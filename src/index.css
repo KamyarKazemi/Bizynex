@@ -1,0 +1,93 @@
+@import 'tailwindcss';
+@import './styles/tokens.css';
+
+/* ---- Fonts -----------------------------------------------------------
+ * Self-hosted and subset (see scripts/build-fonts.mjs). No foreign CDN:
+ * CLAUDE.md section 2 is a hard rule, and a blocked font request would
+ * otherwise cost us the whole first paint.
+ */
+@font-face {
+  font-family: 'Vazirmatn';
+  src: url('/fonts/vazirmatn-regular-subset.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Vazirmatn';
+  src: url('/fonts/vazirmatn-semibold-subset.woff2') format('woff2');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    /* Anchor links must not land under the sticky header. */
+    scroll-padding-top: 5rem;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--color-paper);
+    color: var(--color-navy-800);
+    font-family: var(--font-sans);
+    font-size: var(--text-body);
+    line-height: var(--text-body--line-height);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Persian numerals in the copy should not fall back to a Latin face. */
+  :lang(fa) {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* One focus treatment everywhere. Never removed, only replaced. */
+  :focus-visible {
+    outline: 2px solid var(--color-teal-text);
+    outline-offset: 3px;
+    border-radius: 2px;
+  }
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  /* Two steps, not a fade: a caret blinks, it does not breathe. */
+  @keyframes caret {
+    0% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0;
+    }
+  }
+
+  ::selection {
+    background-color: var(--color-teal-wash);
+    color: var(--color-navy-900);
+  }
+
+  /* Reduced motion is honoured globally, not per component, so a new
+   * component cannot forget to respect it. */
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}

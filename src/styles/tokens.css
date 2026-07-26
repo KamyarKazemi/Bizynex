@@ -1,0 +1,66 @@
+/**
+ * Brand tokens. The only place hex values are allowed to exist.
+ * Values are canonical, taken from CONTEXT.md section 4.
+ */
+
+@theme {
+  /* ---- Structure ------------------------------------------------------ */
+  --color-navy-900: #0a1a28;
+  --color-navy-800: #122a3e;
+  --color-navy-700: #1d3e58;
+  --color-navy-600: #2c5271;
+  --color-navy-100: #e4e9ee;
+
+  /* ---- Accent ---------------------------------------------------------
+   * Named by permitted use, not by shade. Brand teal is 3.23:1 on white and
+   * fails as body text, so there is deliberately no token you can reach for
+   * that would let you set it as type on a light surface.
+   */
+  --color-teal-fill: #17a096; /* fills, strokes, icons, CTA backgrounds */
+  --color-teal-text: #0e7a72; /* teal type and links on light — 5.19:1 */
+  --color-teal-on-navy: #4fd6c7; /* teal type on navy — 8.26:1 */
+  --color-teal-wash: #e7f6f4;
+
+  /* ---- Surfaces ------------------------------------------------------- */
+  --color-paper: #ffffff;
+  --color-surface: #f6f8f9;
+  /* Named "rule" rather than "line": `decoration-line` would read as a
+   * text-decoration utility rather than a colour. */
+  --color-rule: #e1e6ea;
+  --color-muted: #5a6b7c; /* secondary text — 5.48:1 */
+
+  /* ---- Semantic ------------------------------------------------------- */
+  --color-warning: #b45309;
+  --color-error: #b42318;
+
+  /* ---- Type -----------------------------------------------------------
+   * One family, two weights. Hierarchy comes from size and weight only.
+   * Line heights are set for Persian, which needs more air than Latin.
+   */
+  --font-sans: 'Vazirmatn', system-ui, sans-serif;
+
+  --text-display: clamp(1.875rem, 1.1rem + 3.6vw, 3.25rem);
+  --text-display--line-height: 1.35;
+  --text-h2: clamp(1.375rem, 1rem + 1.6vw, 2rem);
+  --text-h2--line-height: 1.4;
+  --text-h3: 1.125rem;
+  --text-h3--line-height: 1.55;
+  --text-lead: 1.25rem;
+  --text-lead--line-height: 1.7;
+  --text-body: 1.0625rem;
+  --text-body--line-height: 1.8;
+  --text-label: 0.8125rem;
+  --text-label--line-height: 1.6;
+
+  /* ---- Geometry -------------------------------------------------------
+   * One radius on the whole site. Flat surfaces, hairline borders, no
+   * shadows — the 1px rule does the work a shadow would.
+   */
+  --radius-card: 4px;
+
+  /* Prose measure: roughly 65 Persian characters. */
+  --container-measure: 34rem;
+
+  /* Outer page width. Every section aligns to this, so it lives in one place. */
+  --container-page: 76rem;
+}
