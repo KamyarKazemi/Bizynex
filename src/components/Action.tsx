@@ -20,8 +20,8 @@ const BASE =
  * would push the navy label back below the floor.
  */
 const TONES = {
-  primary: 'bg-teal-fill px-6 py-3 text-navy-900 hover:bg-teal-on-navy',
-  quiet: 'px-1 py-3 text-navy-800 underline decoration-rule underline-offset-8 hover:decoration-navy-800',
+  primary: 'bg-accent-fill px-6 py-3 text-on-accent hover:bg-accent-hover',
+  quiet: 'px-1 py-3 text-ink underline decoration-rule underline-offset-8 hover:decoration-ink',
 } as const;
 
 export const Action = ({ href, children, tone = 'primary', className }: ActionProps) => (

@@ -116,14 +116,14 @@ export const Intro = ({ onFinished }: IntroProps) => {
         <p
           dir="ltr"
           lang="en"
-          className={`flex items-baseline font-semibold tracking-tight text-paper transition-opacity duration-300 ${
+          className={`flex items-baseline font-semibold tracking-tight text-white transition-opacity duration-300 ${
             isWiping ? 'opacity-0' : 'opacity-100'
           }`}
           style={{ fontSize: 'clamp(2.5rem, 1.5rem + 5vw, 5rem)' }}
         >
           <span>{WORDMARK.slice(0, typedCount)}</span>
           {/* The caret is the single teal element on this screen. */}
-          <span className="ms-[0.08em] inline-block h-[0.9em] w-[0.06em] self-center bg-teal-fill motion-safe:animate-[caret_1s_steps(2)_infinite]" />
+          <span className="ms-[0.08em] inline-block h-[0.9em] w-[0.06em] self-center bg-accent-fill motion-safe:animate-[caret_1s_steps(2)_infinite]" />
         </p>
       </div>
 
@@ -131,7 +131,7 @@ export const Intro = ({ onFinished }: IntroProps) => {
       <button
         type="button"
         onClick={skip}
-        className={`fixed bottom-8 left-1/2 z-50 -translate-x-1/2 text-label text-navy-600 underline underline-offset-4 transition-opacity duration-300 hover:text-paper focus-visible:text-paper ${
+        className={`fixed bottom-8 left-1/2 z-50 -translate-x-1/2 text-label text-navy-600 underline underline-offset-4 transition-opacity duration-300 hover:text-white focus-visible:text-white ${
           isWiping ? 'pointer-events-none opacity-0' : 'opacity-100'
         }`}
       >

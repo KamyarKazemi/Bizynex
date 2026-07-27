@@ -1,35 +1,51 @@
 /**
  * Brand tokens. The only place hex values are allowed to exist.
- * Values are canonical, taken from CONTEXT.md section 4.
+ *
+ * Two layers, and the distinction matters:
+ *
+ *   PALETTE  — the canonical brand colours from CONTEXT.md section 4. Fixed
+ *              values. Navy is always navy. Use these only when something must
+ *              look the same in both themes.
+ *   SEMANTIC — what a colour is *for*: ink, paper, rule, accent. These flip
+ *              between light and dark. Components use these and nothing else,
+ *              which is the whole reason a theme can be added without touching
+ *              a single component.
  */
 
 @theme {
-  /* ---- Structure ------------------------------------------------------ */
+  /* ---- Palette: fixed, canonical ------------------------------------- */
   --color-navy-900: #0a1a28;
   --color-navy-800: #122a3e;
   --color-navy-700: #1d3e58;
   --color-navy-600: #2c5271;
   --color-navy-100: #e4e9ee;
 
-  /* ---- Accent ---------------------------------------------------------
-   * Named by permitted use, not by shade. Brand teal is 3.23:1 on white and
-   * fails as body text, so there is deliberately no token you can reach for
-   * that would let you set it as type on a light surface.
+  --color-teal-500: #17a096;
+  --color-teal-300: #4fd6c7;
+  --color-white: #ffffff;
+
+  /* ---- Semantic: flipped by theme -------------------------------------
+   * Light values live here so that a browser which never applies either dark
+   * rule still gets a correct, complete palette.
    */
-  --color-teal-fill: #17a096; /* fills, strokes, icons, CTA backgrounds */
-  --color-teal-text: #0e7a72; /* teal type and links on light — 5.19:1 */
-  --color-teal-on-navy: #4fd6c7; /* teal type on navy — 8.26:1 */
-  --color-teal-wash: #e7f6f4;
+  --color-paper: #ffffff; /* page background */
+  --color-surface: #f6f8f9; /* alternating sections, cards */
+  --color-rule: #e1e6ea; /* hairlines — the only divider we use */
 
-  /* ---- Surfaces ------------------------------------------------------- */
-  --color-paper: #ffffff;
-  --color-surface: #f6f8f9;
-  /* Named "rule" rather than "line": `decoration-line` would read as a
-   * text-decoration utility rather than a colour. */
-  --color-rule: #e1e6ea;
-  --color-muted: #5a6b7c; /* secondary text — 5.48:1 */
+  --color-ink: #122a3e; /* body and headings — 14.7:1 on paper */
+  --color-ink-soft: #1d3e58; /* nav, secondary emphasis */
+  --color-muted: #5a6b7c; /* labels and meta — 5.5:1 */
 
-  /* ---- Semantic ------------------------------------------------------- */
+  /* Named by permitted use, not by shade. Brand teal is 3.23:1 on white and
+   * fails as body text, so there is deliberately no token you can reach for
+   * that would let you set it as type on a light surface. */
+  --color-accent-fill: #17a096; /* fills, icons, the primary action */
+  --color-accent-hover: #4fd6c7; /* hover brightens; darkening would fail contrast */
+  --color-accent-text: #0e7a72; /* teal type on light — 5.19:1 */
+  --color-on-accent: #0a1a28; /* label on the accent fill — 5.47:1 */
+  --color-selection: #e7f6f4;
+
+  /* ---- Semantic: warning and error ------------------------------------ */
   --color-warning: #b45309;
   --color-error: #b42318;
 
@@ -63,4 +79,49 @@
 
   /* Outer page width. Every section aligns to this, so it lives in one place. */
   --container-page: 76rem;
+}
+
+/**
+ * Dark theme.
+ *
+ * Not an inversion — an inverted palette would put pure white type on pure
+ * black, which is harsher than anything in CONTEXT.md section 7 would allow.
+ * Paper becomes the deepest navy, ink becomes the lightest, and every pair below
+ * was checked rather than guessed:
+ *
+ *   ink on paper        14.5:1      muted on paper      6.0:1
+ *   ink on surface      12.1:1      muted on surface    5.0:1
+ *   accent-text on paper 9.9:1      on-accent on fill   5.5:1
+ *
+ * Applied both by system preference and by an explicit `data-theme`, with the
+ * explicit choice winning in both directions.
+ */
+@layer theme {
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme='light']) {
+      --color-paper: #0a1a28;
+      --color-surface: #122a3e;
+      --color-rule: #1d3e58;
+
+      --color-ink: #e4e9ee;
+      --color-ink-soft: #c7d2dc;
+      --color-muted: #8798ab;
+
+      --color-accent-text: #4fd6c7;
+      --color-selection: #1d3e58;
+    }
+  }
+
+  :root[data-theme='dark'] {
+    --color-paper: #0a1a28;
+    --color-surface: #122a3e;
+    --color-rule: #1d3e58;
+
+    --color-ink: #e4e9ee;
+    --color-ink-soft: #c7d2dc;
+    --color-muted: #8798ab;
+
+    --color-accent-text: #4fd6c7;
+    --color-selection: #1d3e58;
+  }
 }

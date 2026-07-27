@@ -100,5 +100,7 @@ export const fa = {
     emailUs: 'ارسال ایمیل به بیزینکس',
     toTop: 'بازگشت به بالا',
     skipIntro: 'رد کردن',
+    switchToDark: 'حالت تیره',
+    switchToLight: 'حالت روشن',
   },
 } as const;

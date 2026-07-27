@@ -12,7 +12,15 @@ type CapabilityState = {
    * always `undecided`, which renders nothing.
    */
   intro: 'undecided' | 'playing' | 'done';
+  /**
+   * Mirrors the `data-theme` attribute, which the inline boot script sets before
+   * first paint. React never decides the theme — it only reads back what is
+   * already on screen, so there is nothing to flash.
+   */
+  theme: Theme;
 };
+
+export type Theme = 'light' | 'dark';
 
 const initialState: CapabilityState = {
   hasPainted: false,
@@ -22,6 +30,7 @@ const initialState: CapabilityState = {
   supportsWebgl: false,
   isLowMemory: true,
   intro: 'undecided',
+  theme: 'light',
 };
 
 const capabilitySlice = createSlice({
@@ -47,15 +56,26 @@ const capabilitySlice = createSlice({
     finishIntro: (state) => {
       state.intro = 'done';
     },
+    setTheme: (state, action: PayloadAction<Theme>) => {
+      state.theme = action.payload;
+    },
   },
 });
 
-export const { markPainted, setReducedMotion, setDeviceSupport, resolveIntro, finishIntro } =
-  capabilitySlice.actions;
+export const {
+  markPainted,
+  setReducedMotion,
+  setDeviceSupport,
+  resolveIntro,
+  finishIntro,
+  setTheme,
+} = capabilitySlice.actions;
 export const capabilityReducer = capabilitySlice.reducer;
 
 export const selectIntroPlaying = (state: { capability: CapabilityState }) =>
   state.capability.intro === 'playing';
+
+export const selectTheme = (state: { capability: CapabilityState }) => state.capability.theme;
 
 /** Every condition in CLAUDE.md section 7 that must hold before WebGL mounts. */
 export const selectCanvasEnabled = (state: { capability: CapabilityState }) =>

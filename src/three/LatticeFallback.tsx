@@ -38,7 +38,7 @@ export const LatticeFallback = ({ className }: { className?: string }) => (
           y2={segment.b[1]}
           strokeWidth={segment.core === 1 ? STROKE : SHEET_STROKE}
           strokeOpacity={segment.core === 1 ? 1 : 0.22}
-          className={segment.accent === 1 ? 'stroke-teal-fill' : 'stroke-navy-800'}
+          className={segment.accent === 1 ? 'stroke-accent-fill' : 'stroke-ink'}
         />
       ))}
     </g>

@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build && vite build --ssr src/entry-server.tsx --outDir dist/server && node scripts/prerender.mjs",
     "build:fonts": "node scripts/build-fonts.mjs",
     "build:images": "node scripts/build-images.mjs",
+    "check:contrast": "node scripts/check-contrast.mjs",
     "lint": "eslint .",
     "preview": "vite preview"
   },

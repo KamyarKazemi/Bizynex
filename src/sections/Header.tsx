@@ -1,3 +1,4 @@
+import { ThemeToggle } from '../components/ThemeToggle';
 import { fa } from '../content/fa';
 import { NAV_LINKS } from '../content/site';
 
@@ -12,22 +13,23 @@ import { NAV_LINKS } from '../content/site';
  */
 export const Header = () => (
   <div className="sticky top-0 z-20 border-b border-rule bg-paper">
-    <nav
-      aria-label={fa.ui.mainNav}
-      className="mx-auto max-w-page px-6 py-3 sm:px-10 lg:px-16"
-    >
-      <ul className="flex items-center gap-5 sm:gap-8">
-        {NAV_LINKS.map((link) => (
-          <li key={link.key}>
-            <a
-              href={link.href}
-              className="text-label text-navy-700 transition-colors duration-200 hover:text-teal-text sm:text-body"
-            >
-              {fa.nav[link.key]}
-            </a>
-          </li>
-        ))}
-      </ul>
-    </nav>
+    <div className="mx-auto flex max-w-page items-center justify-between gap-4 px-6 py-3 sm:px-10 lg:px-16">
+      <nav aria-label={fa.ui.mainNav}>
+        <ul className="flex items-center gap-5 sm:gap-8">
+          {NAV_LINKS.map((link) => (
+            <li key={link.key}>
+              <a
+                href={link.href}
+                className="text-label text-ink-soft transition-colors duration-200 hover:text-accent-text sm:text-body"
+              >
+                {fa.nav[link.key]}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </nav>
+
+      <ThemeToggle />
+    </div>
   </div>
 );

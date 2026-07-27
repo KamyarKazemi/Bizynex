@@ -14,8 +14,9 @@ npm run build    # type-check, bundle, then prerender into dist/index.html
 npm run preview  # serve the built site
 npm run lint
 
-npm run build:fonts   # re-subset Vazirmatn, by hand
-npm run build:images  # regenerate the logo files from brand/, by hand
+npm run build:fonts     # re-subset Vazirmatn, by hand
+npm run build:images    # regenerate the logo files from brand/, by hand
+npm run check:contrast  # fail if any colour pair drops below the a11y floor
 ```
 
 ## Things that are not obvious
@@ -43,10 +44,30 @@ copy.
 colour values live in `src/styles/tokens.css`. Components contain neither. If you need a new string
 or a new colour, add it there first.
 
+**Tokens come in two layers, and the difference matters.** `src/styles/tokens.css` defines a
+*palette* (`navy-900`, `teal-500`, …) whose values never change, and a *semantic* layer (`ink`,
+`paper`, `rule`, `accent-fill`, …) that flips between light and dark. **Components use the semantic
+layer and nothing else** — that is the only reason dark mode did not require touching every file.
+Reach for a palette token only when something must look identical in both themes, as the intro
+curtain does.
+
 **Teal is rationed.** Roughly one teal element per viewport — currently the two call-to-action
 buttons and the two accent segments in the hero figure. There is no token that lets you set brand
-teal as body text, because brand teal fails contrast at body size. Use `teal-text` on light and
-`teal-on-navy` on dark.
+teal as body text, because brand teal fails contrast at body size. Use `accent-text` for type and
+`accent-fill` for fills; the names are the guard rail.
+
+**The theme is owned by the document, not by React.** An inline script in `index.html` sets
+`data-theme` on `<html>` before the stylesheet applies, so the page never paints in the wrong theme
+and corrects itself. React reads that decision back; it never makes it. The storage key is shared
+between that script and `src/hooks/useTheme.ts` — change one, change the other.
+
+**Run `npm run check:contrast` after touching any colour.** It reads the real token values and
+fails the build floor for both themes. Brand teal is the trap: it looks correct on white and
+measures 3.23:1.
+
+**The logo ships in two versions.** `build:images` repaints the navy in the mark to the dark theme's
+ink and leaves the teal segments alone. Both are in the markup with CSS choosing; swapping `src`
+from JavaScript would show a navy mark on a navy page until hydration caught up.
 
 **`src/three/geometry.ts` feeds three things.** The WebGL scene, the static SVG fallback, and the
 favicon are all the same construction system: right angles and 45-degree diagonals on an 8-unit

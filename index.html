@@ -8,8 +8,32 @@
       name="description"
       content="بیزینکس وب‌سایت، اپلیکیشن و اتوماسیون می‌سازد؛ با برنامه‌ریزی روشن، ارتباط پیوسته و پشتیبانی بلندمدت."
     />
-    <meta name="theme-color" content="#122A3E" />
+    <meta name="theme-color" content="#FFFFFF" />
     <link rel="icon" type="image/svg+xml" href="/brand/favicon.svg" />
+
+    <!--
+      Runs before the stylesheet is applied, so the page never paints in the
+      wrong theme and then corrects itself. It is inline for the same reason:
+      a separate request could not possibly arrive in time, and CLAUDE.md 2
+      rules out fetching it from anywhere else anyway.
+
+      The storage key is shared with src/hooks/useTheme.ts.
+    -->
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem('bizynex:theme');
+          var dark = stored ? stored === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+          document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+          if (dark) {
+            var meta = document.querySelector('meta[name="theme-color"]');
+            if (meta) meta.setAttribute('content', '#0A1A28');
+          }
+        } catch (error) {
+          /* Storage blocked. The CSS media query still gives the right theme. */
+        }
+      })();
+    </script>
 
     <!-- Only the body weight is preloaded. SemiBold is used for headings and
          can arrive a beat later without shifting the reading experience. -->

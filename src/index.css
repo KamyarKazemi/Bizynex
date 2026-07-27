@@ -1,6 +1,27 @@
 @import 'tailwindcss';
 @import './styles/tokens.css';
 
+/**
+ * `dark:` follows the same rule the tokens do: the system preference by default,
+ * an explicit `data-theme` overriding it in both directions. Tailwind's built-in
+ * variant only knows about the media query, which would leave a manual choice
+ * half-applied.
+ *
+ * Almost nothing needs this — colour comes from semantic tokens that flip on
+ * their own. It exists for the handful of cases where the *asset* has to change,
+ * not the colour: the logo is navy, and a navy logo on a navy page is no logo.
+ */
+@custom-variant dark {
+  @media (prefers-color-scheme: dark) {
+    &:where(:root:not([data-theme='light']) *) {
+      @slot;
+    }
+  }
+  &:where(:root[data-theme='dark'] *) {
+    @slot;
+  }
+}
+
 /* ---- Fonts -----------------------------------------------------------
  * Self-hosted and subset (see scripts/build-fonts.mjs). No foreign CDN:
  * CLAUDE.md section 2 is a hard rule, and a blocked font request would
@@ -32,7 +53,7 @@
 
   body {
     background-color: var(--color-paper);
-    color: var(--color-navy-800);
+    color: var(--color-ink);
     font-family: var(--font-sans);
     font-size: var(--text-body);
     line-height: var(--text-body--line-height);
@@ -46,7 +67,7 @@
 
   /* One focus treatment everywhere. Never removed, only replaced. */
   :focus-visible {
-    outline: 2px solid var(--color-teal-text);
+    outline: 2px solid var(--color-accent-text);
     outline-offset: 3px;
     border-radius: 2px;
   }
@@ -71,8 +92,8 @@
   }
 
   ::selection {
-    background-color: var(--color-teal-wash);
-    color: var(--color-navy-900);
+    background-color: var(--color-selection);
+    color: var(--color-ink);
   }
 
   /* Reduced motion is honoured globally, not per component, so a new

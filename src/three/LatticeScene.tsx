@@ -100,14 +100,14 @@ const VERTEX = /* glsl */ `
 `;
 
 const FRAGMENT = /* glsl */ `
-  uniform vec3 uNavy;
-  uniform vec3 uTeal;
+  uniform vec3 uInk;
+  uniform vec3 uAccent;
   uniform float uOpacity;
   varying float vAccent;
   varying float vFade;
 
   void main() {
-    gl_FragColor = vec4(mix(uNavy, uTeal, vAccent), vFade * uOpacity);
+    gl_FragColor = vec4(mix(uInk, uAccent, vAccent), vFade * uOpacity);
   }
 `;
 
@@ -222,9 +222,22 @@ const LatticeScene = ({ targetId, active, onReady }: LatticeSceneProps) => {
         uStroke: { value: STROKE },
         uSheetStroke: { value: 0.05 },
         uPointer: { value: new Vector2(0, 0) },
-        uNavy: { value: new Color(token('--color-navy-800')) },
-        uTeal: { value: new Color(token('--color-teal-fill')) },
+        uInk: { value: new Color(token('--color-ink')) },
+        uAccent: { value: new Color(token('--color-accent-fill')) },
       },
+    });
+
+    // The drawing is ink on paper in both themes, so the ink colour has to
+    // follow the theme. Watching the attribute rather than listening for an
+    // event means this also catches the system flipping at sunset.
+    const readColours = () => {
+      material.uniforms.uInk.value.set(token('--color-ink'));
+      material.uniforms.uAccent.value.set(token('--color-accent-fill'));
+    };
+    const themeObserver = new MutationObserver(readColours);
+    themeObserver.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-theme'],
     });
 
     const mesh = new Mesh(geometry, material);
@@ -348,6 +361,7 @@ const LatticeScene = ({ targetId, active, onReady }: LatticeSceneProps) => {
       cancelAnimationFrame(frame);
       frame = 0;
       loopRef.current = null;
+      themeObserver.disconnect();
       entrance.kill();
       trigger.kill();
       resizeObserver.disconnect();

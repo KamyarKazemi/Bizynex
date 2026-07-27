@@ -12,7 +12,7 @@ export const Contact = () => (
   <Section id={SECTION_IDS.contact}>
     <SectionHeader index={SECTION_INDEX.contact} title={fa.contact.title} />
 
-    <p className="max-w-measure text-lead text-navy-800">{fa.contact.body}</p>
+    <p className="max-w-measure text-lead text-ink">{fa.contact.body}</p>
 
     <div className="mt-10 flex flex-wrap items-center gap-x-8 gap-y-4">
       <Action href={mailtoHref}>{fa.contact.cta}</Action>
@@ -24,7 +24,7 @@ export const Contact = () => (
         dir="ltr"
         lang="en"
         aria-label={fa.ui.emailUs}
-        className="text-body text-navy-800 underline decoration-rule underline-offset-8 transition-colors duration-200 hover:decoration-navy-800"
+        className="text-body text-ink underline decoration-rule underline-offset-8 transition-colors duration-200 hover:decoration-ink"
       >
         {site.email}
       </a>

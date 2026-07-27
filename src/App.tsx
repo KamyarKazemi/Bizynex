@@ -22,7 +22,7 @@ const App = () => {
 
       <a
         href="#main"
-        className="sr-only focus:not-sr-only focus:absolute focus:z-30 focus:m-3 focus:rounded-card focus:bg-navy-800 focus:px-4 focus:py-2 focus:text-paper"
+        className="sr-only focus:not-sr-only focus:absolute focus:z-30 focus:m-3 focus:rounded-card focus:bg-ink focus:px-4 focus:py-2 focus:text-paper"
       >
         {fa.ui.skipToContent}
       </a>

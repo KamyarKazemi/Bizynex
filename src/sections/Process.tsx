@@ -14,10 +14,10 @@ export const Process = () => (
 
     <ol className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4 lg:gap-8">
       {fa.process.steps.map((step) => (
-        <li key={step.n} className="border-t border-navy-800 pt-5">
-          <p className="text-h3 font-semibold tabular-nums text-navy-800">{step.n}</p>
-          <h3 className="mt-4 text-h3 font-semibold text-navy-800">{step.title}</h3>
-          <p className="mt-3 text-body text-navy-800">{step.body}</p>
+        <li key={step.n} className="border-t border-ink pt-5">
+          <p className="text-h3 font-semibold tabular-nums text-ink">{step.n}</p>
+          <h3 className="mt-4 text-h3 font-semibold text-ink">{step.title}</h3>
+          <p className="mt-3 text-body text-ink">{step.body}</p>
         </li>
       ))}
     </ol>

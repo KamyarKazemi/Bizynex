@@ -16,10 +16,10 @@ export const Services = () => (
         <li key={item.title} className="flex flex-col bg-paper p-6 lg:p-7">
           {/* Navy, not teal. Four teal icons in one viewport would spend the
               whole accent budget on decoration. */}
-          <ServiceIcon name={ICONS[index]} className="text-navy-700" />
-          <h3 className="mt-6 text-h3 font-semibold text-navy-800">{item.title}</h3>
+          <ServiceIcon name={ICONS[index]} className="text-ink-soft" />
+          <h3 className="mt-6 text-h3 font-semibold text-ink">{item.title}</h3>
           <p className="mt-1 text-label text-muted">{item.deliverable}</p>
-          <p className="mt-4 text-body text-navy-800">{item.body}</p>
+          <p className="mt-4 text-body text-ink">{item.body}</p>
         </li>
       ))}
     </ul>

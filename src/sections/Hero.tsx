@@ -17,11 +17,11 @@ export const Hero = () => (
       <div>
         <Logo variant="stacked" className="h-20 w-auto sm:h-24" priority />
 
-        <h1 className="mt-10 max-w-measure text-display font-semibold text-navy-800">
+        <h1 className="mt-10 max-w-measure text-display font-semibold text-ink">
           {fa.hero.title}
         </h1>
 
-        <p className="mt-6 max-w-measure text-lead text-navy-800">{fa.hero.subtitle}</p>
+        <p className="mt-6 max-w-measure text-lead text-ink">{fa.hero.subtitle}</p>
 
         <div className="mt-10 flex flex-wrap items-center gap-x-8 gap-y-3">
           <Action href={`#${SECTION_IDS.contact}`}>{fa.hero.cta}</Action>
@@ -33,7 +33,7 @@ export const Hero = () => (
 
       <LatticeCanvas
         targetId={HERO_ID}
-        className="relative order-first aspect-square w-full max-w-[20rem] justify-self-center text-navy-800 lg:order-0 lg:max-w-none"
+        className="relative order-first aspect-square w-full max-w-[20rem] justify-self-center text-ink lg:order-0 lg:max-w-none"
       />
     </div>
   </section>

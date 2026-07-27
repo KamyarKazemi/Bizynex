@@ -15,7 +15,7 @@ export const SectionHeader = ({ index, title }: SectionHeaderProps) => (
       {index}
     </p>
     <div className="mt-2 flex items-center gap-5">
-      <h2 className="text-h2 font-semibold text-navy-800">{title}</h2>
+      <h2 className="text-h2 font-semibold text-ink">{title}</h2>
       <span className="h-px flex-1 bg-rule" aria-hidden="true" />
     </div>
   </header>
