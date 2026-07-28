@@ -102,5 +102,15 @@ export const fa = {
     skipIntro: 'رد کردن',
     switchToDark: 'حالت تیره',
     switchToLight: 'حالت روشن',
+
+    /* The opening room. `overturePull` is the visible instruction beside the
+     * cord; `overturePullLabel` is what a screen reader announces for the same
+     * control, which needs to say what the control does rather than what the
+     * visitor should reach for. */
+    overtureTitle: 'مقدمهٔ بیزینکس',
+    overturePull: 'طناب را بکشید',
+    overturePullLabel: 'کشیدن طناب و روشن کردن چراغ',
+    overtureEnter: 'ورود به سایت',
+    overtureCountdown: 'ورود خودکار به سایت',
   },
 } as const;

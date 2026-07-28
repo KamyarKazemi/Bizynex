@@ -1,21 +1,7 @@
 import { useEffect } from 'react';
 import { useAppDispatch } from '../store';
 import { markPainted, setDeviceSupport, setReducedMotion } from '../store/capabilitySlice';
-
-const supportsWebgl = () => {
-  try {
-    const probe = document.createElement('canvas');
-    return Boolean(probe.getContext('webgl2') ?? probe.getContext('webgl'));
-  } catch {
-    return false;
-  }
-};
-
-const isLowMemory = () => {
-  // Chromium-only. Absent elsewhere, in which case we do not assume the worst.
-  const { deviceMemory } = navigator as Navigator & { deviceMemory?: number };
-  return typeof deviceMemory === 'number' && deviceMemory < 4;
-};
+import { isLowMemory, supportsWebgl } from './deviceSupport';
 
 /**
  * Runs once, after the first paint, and keeps the reduced-motion preference in

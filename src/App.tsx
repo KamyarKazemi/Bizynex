@@ -6,6 +6,7 @@ import { Footer } from './sections/Footer';
 import { Header } from './sections/Header';
 import { Hero } from './sections/Hero';
 import { Intro } from './sections/Intro';
+import { Overture } from './sections/Overture';
 import { Problem } from './sections/Problem';
 import { Process } from './sections/Process';
 import { Services } from './sections/Services';
@@ -18,7 +19,15 @@ const App = () => {
 
   return (
     <>
-      {intro.isPlaying && <Intro onFinished={intro.finish} />}
+      {/* Two openings, one gate. The overture is the 3D room; the curtain is
+          the typed panel that runs where WebGL is not an option. Which one a
+          visitor gets — or neither — is decided entirely in useIntroGate. */}
+      {intro.isPlaying &&
+        (intro.mode === 'overture' ? (
+          <Overture onFinished={intro.finish} />
+        ) : (
+          <Intro onFinished={intro.finish} />
+        ))}
 
       <a
         href="#main"
