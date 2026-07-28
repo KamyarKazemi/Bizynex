@@ -39,13 +39,63 @@ const drawTracked = (context: CanvasRenderingContext2D, size: number) => {
   });
 };
 
+export type Wordmark = {
+  texture: CanvasTexture;
+  /**
+   * Every pixel the letters cover, as points in the plane's own coordinates:
+   * x and y both run -0.5 to 0.5, so the caller scales them to whatever size the
+   * wordmark ended up being on screen.
+   *
+   * `budget` is a ceiling, not a target — the sampler walks the canvas on a
+   * stride wide enough to land under it, so a phone gets a coarser copy of the
+   * same shape rather than a cropped one.
+   */
+  sample: (budget: number) => Float32Array;
+};
+
+/**
+ * Reads back the letters as points.
+ *
+ * getImageData on a canvas this size is a few milliseconds and it happens once,
+ * off the back of a user gesture — but it is still the single most expensive
+ * thing in the opening, which is why the result is handed out as a plain
+ * Float32Array for the caller to keep rather than being recomputed.
+ */
+const samplePixels = (canvas: HTMLCanvasElement, budget: number) => {
+  const context = canvas.getContext('2d', { willReadFrequently: true });
+  if (!context) return new Float32Array(0);
+
+  const { data } = context.getImageData(0, 0, WIDTH, HEIGHT);
+
+  // Roughly a fifth of this canvas is ink. Picking the stride from that estimate
+  // gets close enough in one go that a second pass is never worth it.
+  const inkRatio = 0.2;
+  const stride = Math.max(1, Math.round(Math.sqrt((WIDTH * HEIGHT * inkRatio) / budget)));
+
+  const points: number[] = [];
+  for (let y = 0; y < HEIGHT; y += stride) {
+    for (let x = 0; x < WIDTH; x += stride) {
+      // Green channel, matching what the alpha map reads.
+      if (data[(y * WIDTH + x) * 4 + 1] < 128) continue;
+
+      // Jittered by up to half a stride so the points do not betray the grid
+      // they were read off.
+      const jitterX = (Math.random() - 0.5) * stride;
+      const jitterY = (Math.random() - 0.5) * stride;
+      points.push((x + jitterX) / WIDTH - 0.5, 0.5 - (y + jitterY) / HEIGHT, 0);
+    }
+  }
+
+  return new Float32Array(points);
+};
+
 /**
  * Returns a texture that draws itself immediately and redraws once Vazirmatn has
  * loaded. Waiting for the font first would mean an empty room on a slow
  * connection; the first pass in the fallback face is close enough in weight that
  * the swap is invisible in a dim scene.
  */
-export const createWordmarkTexture = () => {
+export const createWordmarkTexture = (): Wordmark => {
   const canvas = document.createElement('canvas');
   canvas.width = WIDTH;
   canvas.height = HEIGHT;
@@ -57,7 +107,9 @@ export const createWordmarkTexture = () => {
   texture.minFilter = LinearFilter;
   texture.generateMipmaps = false;
 
-  if (!context) return texture;
+  const sample = (budget: number) => samplePixels(canvas, budget);
+
+  if (!context) return { texture, sample };
 
   const paint = () => {
     // Opaque black behind white type, rather than transparency. An alpha map
@@ -80,5 +132,5 @@ export const createWordmarkTexture = () => {
   // in older Safari, where the fallback face is simply what ships.
   document.fonts?.load(FONT(HEIGHT * 0.62), WORD).then(paint).catch(() => undefined);
 
-  return texture;
+  return { texture, sample };
 };

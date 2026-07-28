@@ -110,7 +110,12 @@ export const fa = {
     overtureTitle: 'مقدمهٔ بیزینکس',
     overturePull: 'طناب را بکشید',
     overturePullLabel: 'کشیدن طناب و روشن کردن چراغ',
+    /* Shown once the light is on, so the same cord reads as a switch. */
+    overturePullAgain: 'دوباره بکشید',
+    overturePullOffLabel: 'کشیدن طناب و خاموش کردن چراغ',
     overtureEnter: 'ورود به سایت',
     overtureCountdown: 'ورود خودکار به سایت',
+    overtureMute: 'قطع صدا',
+    overtureUnmute: 'پخش صدا',
   },
 } as const;

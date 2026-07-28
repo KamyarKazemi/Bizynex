@@ -8,11 +8,16 @@ import {
   type IntroMode,
 } from '../store/capabilitySlice';
 import { isLowMemory, prefersReducedMotion, supportsWebgl } from './deviceSupport';
+import { removeCover } from './introCover';
 
 const SESSION_KEY = 'bizynex:intro-shown';
 
-/** The overture is a full 3D room. Below this width it has nowhere to be. */
-const MIN_OVERTURE_WIDTH = 360;
+/**
+ * The room lays itself out against whatever viewport it is given, so this is a
+ * floor rather than a breakpoint — below it the cord and the countdown would be
+ * fighting for the same few square centimetres.
+ */
+const MIN_OVERTURE_WIDTH = 320;
 
 /**
  * Reading and marking are two separate steps on purpose.
@@ -76,11 +81,16 @@ export const useIntroGate = () => {
   const mode = useAppSelector(selectIntroMode);
 
   useEffect(() => {
-    dispatch(resolveIntro(decide()));
+    const decision = decide();
+    // index.html put the cover up on two cheap checks. This is the full verdict,
+    // so if it says no opening, the cover comes off now rather than lingering.
+    if (decision === null) removeCover();
+    dispatch(resolveIntro(decision));
   }, [dispatch]);
 
   const finish = useCallback(() => {
     rememberSeen();
+    removeCover();
     dispatch(finishIntro());
   }, [dispatch]);
 

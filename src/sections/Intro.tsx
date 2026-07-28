@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createKeySound } from '../audio/typewriter';
 import { fa } from '../content/fa';
+import { liftCover } from '../hooks/introCover';
 
 const WORDMARK = 'Bizynex';
 const MS_PER_CHARACTER = 105;
@@ -43,6 +44,10 @@ export const Intro = ({ onFinished }: IntroProps) => {
     const finish = () => {
       if (finished) return;
       finished = true;
+      // The pre-paint cover from index.html is the same navy as this panel and
+      // sits directly behind it. Without lifting it here the wipe would reveal
+      // another dark rectangle instead of the page.
+      liftCover();
       setIsWiping(true);
       timers.push(window.setTimeout(onFinished, WIPE_DURATION));
     };

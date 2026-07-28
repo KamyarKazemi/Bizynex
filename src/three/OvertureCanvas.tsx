@@ -1,4 +1,5 @@
 import { Suspense, lazy, useEffect, useState } from 'react';
+import type { OvertureAudio } from '../audio/overture';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import type { OverturePhase } from './OvertureScene';
 
@@ -7,6 +8,7 @@ const OvertureScene = lazy(() => import('./OvertureScene'));
 
 type OvertureCanvasProps = {
   phase: OverturePhase;
+  audio: OvertureAudio;
   onPulled: () => void;
   /** First frame is drawn. */
   onReady: () => void;
@@ -22,7 +24,13 @@ type OvertureCanvasProps = {
  * showing. This one is covering the entire site — if it breaks, the only
  * acceptable outcome is that the visitor is let through immediately.
  */
-export const OvertureCanvas = ({ phase, onPulled, onReady, onFailed }: OvertureCanvasProps) => {
+export const OvertureCanvas = ({
+  phase,
+  audio,
+  onPulled,
+  onReady,
+  onFailed,
+}: OvertureCanvasProps) => {
   const [isTabVisible, setIsTabVisible] = useState(true);
 
   useEffect(() => {
@@ -37,6 +45,7 @@ export const OvertureCanvas = ({ phase, onPulled, onReady, onFailed }: OvertureC
         <OvertureScene
           phase={phase}
           active={isTabVisible}
+          audio={audio}
           onPulled={onPulled}
           onReady={onReady}
         />

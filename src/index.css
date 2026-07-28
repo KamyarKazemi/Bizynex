@@ -49,6 +49,9 @@
     /* Anchor links must not land under the sticky header. */
     scroll-padding-top: 5rem;
     -webkit-text-size-adjust: 100%;
+    /* The opening locks scrolling while it is up. Reserving the gutter for the
+     * whole site means unlocking it again does not shift the page sideways. */
+    scrollbar-gutter: stable;
   }
 
   body {
@@ -78,6 +81,19 @@
     }
     to {
       opacity: 1;
+    }
+  }
+
+  /* The opening's countdown ring. Driven by an animation rather than a
+   * transition so that re-entering the lit state restarts it from empty simply
+   * by remounting the element — no state has to be kept in sync with it.
+   * `--ring-length` is the circle's circumference, set by the component. */
+  @keyframes ring-fill {
+    from {
+      stroke-dashoffset: var(--ring-length);
+    }
+    to {
+      stroke-dashoffset: 0;
     }
   }
 

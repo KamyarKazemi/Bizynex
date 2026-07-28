@@ -1,10 +1,19 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { HiOutlineSpeakerWave, HiOutlineSpeakerXMark } from 'react-icons/hi2';
+import { createOvertureAudio } from '../audio/overture';
 import { fa } from '../content/fa';
+import { liftCover } from '../hooks/introCover';
 import { OvertureCanvas } from '../three/OvertureCanvas';
 import type { OverturePhase } from '../three/OvertureScene';
 
-/** How long the ring takes to fill once the light is on. */
-const COUNTDOWN_MS = 5000;
+/**
+ * How long the ring takes to fill once the light is on.
+ *
+ * Long enough to watch the word rebuild itself — the tear and the particles take
+ * a little over two seconds — and then look at it for a moment before the site
+ * takes over. Turning the light back off stops the clock.
+ */
+const COUNTDOWN_MS = 6500;
 /** Must match the exit timeline in OvertureScene. */
 const LEAVE_MS = 1100;
 
@@ -20,6 +29,8 @@ const LEAVE_MS = 1100;
  */
 const SCENE_TIMEOUT_MS = 5000;
 
+const MUTE_KEY = 'bizynex:muted';
+
 const RING_RADIUS = 26;
 const RING_LENGTH = 2 * Math.PI * RING_RADIUS;
 
@@ -27,12 +38,29 @@ const RING_LENGTH = 2 * Math.PI * RING_RADIUS;
  * Where the cord lands on screen, as a fraction of the viewport.
  *
  * These are not guesses. OvertureScene places the lamp at a fixed fraction of
- * the visible height and width at the cord's depth, and both work out to the
- * same screen position on every aspect ratio — so the label can be positioned in
+ * the visible height and width at the cord's depth, and because the visible
+ * height at a given depth does not change with aspect ratio, both work out to
+ * the same screen position on every device — so the label can be positioned in
  * CSS instead of being projected out of the scene every frame.
  */
 const CORD_INSET = '4%';
 const CORD_BELOW = '61%';
+
+const wasMuted = () => {
+  try {
+    return window.localStorage.getItem(MUTE_KEY) === '1';
+  } catch {
+    return false;
+  }
+};
+
+const rememberMuted = (muted: boolean) => {
+  try {
+    window.localStorage.setItem(MUTE_KEY, muted ? '1' : '0');
+  } catch {
+    // Storage blocked. The choice holds for this visit and no longer.
+  }
+};
 
 type OvertureProps = {
   onFinished: () => void;
@@ -45,8 +73,8 @@ type OvertureProps = {
  * operable. That split is not tidiness — a cord you pull with a pointer is not a
  * control, and a visitor on a keyboard would otherwise be standing in a dark
  * room with no way out. So the instruction beside the cord is a real button that
- * pulls it, the countdown has a real button that skips it, and Escape leaves at
- * any point.
+ * pulls it, the countdown has a real button that skips it, sound has a real
+ * button that stops it, and Escape leaves at any point.
  *
  * Nobody sees this twice in a session, and it never renders at all under reduced
  * motion, without WebGL, on a low-memory device, or without JavaScript — see
@@ -54,9 +82,18 @@ type OvertureProps = {
  */
 export const Overture = ({ onFinished }: OvertureProps) => {
   const [phase, setPhase] = useState<OverturePhase>('dark');
-  const [isRingFull, setIsRingFull] = useState(false);
   const [isSceneReady, setIsSceneReady] = useState(false);
+  const [isMuted, setIsMuted] = useState(wasMuted);
   const pullRef = useRef<HTMLButtonElement>(null);
+
+  // One audio graph for the life of the opening. Created here rather than in the
+  // scene because the mute control is here, and because it has to survive the
+  // scene being torn down and rebuilt.
+  const audio = useMemo(() => createOvertureAudio(), []);
+  useEffect(() => () => audio.dispose(), [audio]);
+  useEffect(() => {
+    audio.setMuted(isMuted);
+  }, [audio, isMuted]);
 
   // Held in a ref so the timers below do not restart when React hands us a new
   // callback identity.
@@ -65,9 +102,14 @@ export const Overture = ({ onFinished }: OvertureProps) => {
     finishRef.current = onFinished;
   }, [onFinished]);
 
-  const light = useCallback(() => {
-    setPhase((current) => (current === 'dark' ? 'lit' : current));
-  }, []);
+  /** The cord was pulled — on if it was off, off if it was on. */
+  const toggle = useCallback(() => {
+    audio.unlock();
+    setPhase((current) => {
+      if (current === 'leaving') return current;
+      return current === 'dark' ? 'lit' : 'dark';
+    });
+  }, [audio]);
 
   const leave = useCallback(() => setPhase('leaving'), []);
 
@@ -75,6 +117,14 @@ export const Overture = ({ onFinished }: OvertureProps) => {
   const bail = useCallback(() => finishRef.current(), []);
 
   const markReady = useCallback(() => setIsSceneReady(true), []);
+
+  const toggleMuted = useCallback(() => {
+    audio.unlock();
+    setIsMuted((current) => {
+      rememberMuted(!current);
+      return !current;
+    });
+  }, [audio]);
 
   // Nothing has been drawn yet, so start the clock on giving up.
   useEffect(() => {
@@ -93,25 +143,26 @@ export const Overture = ({ onFinished }: OvertureProps) => {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
 
+  // The countdown belongs to the light. Turning it back off stops the clock,
+  // because a visitor who reaches for the cord a second time is plainly not
+  // finished looking. The ring itself needs no resetting — it unmounts with the
+  // dark state and its animation starts over when it comes back.
   useEffect(() => {
     if (phase !== 'lit') return;
-
-    // One frame late on purpose: the ring has to be painted at its empty length
-    // before the full length is something to transition *to*.
-    const frame = requestAnimationFrame(() => setIsRingFull(true));
     const timer = window.setTimeout(leave, COUNTDOWN_MS);
-
-    return () => {
-      cancelAnimationFrame(frame);
-      window.clearTimeout(timer);
-    };
+    return () => window.clearTimeout(timer);
   }, [phase, leave]);
 
   useEffect(() => {
     if (phase !== 'leaving') return;
+    // The cover from index.html is the same navy and sits directly behind this
+    // panel. Both have to fade together or the exit reveals another dark screen.
+    liftCover();
     const timer = window.setTimeout(() => finishRef.current(), LEAVE_MS);
     return () => window.clearTimeout(timer);
   }, [phase]);
+
+  const isLit = phase !== 'dark';
 
   return (
     // A dialog, but deliberately not aria-modal. Marking it modal would tell
@@ -126,7 +177,13 @@ export const Overture = ({ onFinished }: OvertureProps) => {
       }`}
     >
       <div aria-hidden="true" className="absolute inset-0">
-        <OvertureCanvas phase={phase} onPulled={light} onReady={markReady} onFailed={bail} />
+        <OvertureCanvas
+          phase={phase}
+          audio={audio}
+          onPulled={toggle}
+          onReady={markReady}
+          onFailed={bail}
+        />
       </div>
 
       {/* Something to look at while three.js is still on the wire — the same
@@ -147,30 +204,40 @@ export const Overture = ({ onFinished }: OvertureProps) => {
       {/* Controls float over the canvas, so this layer has to let a pointer
           through to the cord underneath. Each control turns events back on. */}
       <div className="pointer-events-none absolute inset-0">
-        <div
-          className={`absolute transition-opacity duration-500 ${
-            phase === 'dark' ? 'opacity-100' : 'opacity-0'
-          }`}
-          style={{ insetInlineStart: CORD_INSET, top: CORD_BELOW }}
-        >
+        <div className="absolute" style={{ insetInlineStart: CORD_INSET, top: CORD_BELOW }}>
           <button
             ref={pullRef}
             type="button"
-            onClick={light}
-            aria-label={fa.ui.overturePullLabel}
-            disabled={phase !== 'dark'}
-            className="pointer-events-auto text-label text-navy-100 underline decoration-navy-600 underline-offset-8 transition-colors duration-200 hover:decoration-teal-300"
+            onClick={toggle}
+            aria-label={isLit ? fa.ui.overturePullOffLabel : fa.ui.overturePullLabel}
+            disabled={phase === 'leaving'}
+            className="pointer-events-auto min-h-11 px-2 text-label text-navy-100 underline decoration-navy-600 underline-offset-8 transition-colors duration-200 hover:decoration-teal-300"
           >
-            {fa.ui.overturePull}
+            {isLit ? fa.ui.overturePullAgain : fa.ui.overturePull}
           </button>
         </div>
 
-        <div className="absolute inset-x-0 bottom-10 flex justify-center">
+        <button
+          type="button"
+          onClick={toggleMuted}
+          aria-pressed={isMuted}
+          aria-label={isMuted ? fa.ui.overtureUnmute : fa.ui.overtureMute}
+          className="pointer-events-auto absolute top-6 grid size-11 place-items-center text-navy-600 transition-colors duration-200 hover:text-navy-100"
+          style={{ insetInlineEnd: '1.5rem' }}
+        >
+          {isMuted ? (
+            <HiOutlineSpeakerXMark aria-hidden="true" className="size-5" />
+          ) : (
+            <HiOutlineSpeakerWave aria-hidden="true" className="size-5" />
+          )}
+        </button>
+
+        <div className="absolute inset-x-0 bottom-8 flex justify-center px-4">
           {phase === 'dark' ? (
             <button
               type="button"
               onClick={bail}
-              className="pointer-events-auto text-label text-navy-600 underline underline-offset-4 transition-colors duration-200 hover:text-navy-100"
+              className="pointer-events-auto min-h-11 px-3 text-label text-navy-600 underline underline-offset-4 transition-colors duration-200 hover:text-navy-100"
             >
               {fa.ui.skipIntro}
             </button>
@@ -184,7 +251,7 @@ export const Overture = ({ onFinished }: OvertureProps) => {
                 viewBox="0 0 60 60"
                 role="timer"
                 aria-label={fa.ui.overtureCountdown}
-                className="h-12 w-12 -rotate-90"
+                className="size-11 -rotate-90"
               >
                 <circle
                   cx="30"
@@ -201,8 +268,12 @@ export const Overture = ({ onFinished }: OvertureProps) => {
                   fill="none"
                   strokeWidth="2"
                   strokeDasharray={RING_LENGTH}
-                  strokeDashoffset={isRingFull ? 0 : RING_LENGTH}
-                  style={{ transition: `stroke-dashoffset ${COUNTDOWN_MS}ms linear` }}
+                  style={
+                    {
+                      '--ring-length': RING_LENGTH,
+                      animation: `ring-fill ${COUNTDOWN_MS}ms linear forwards`,
+                    } as CSSProperties
+                  }
                   className="stroke-teal-300"
                 />
               </svg>
@@ -210,7 +281,7 @@ export const Overture = ({ onFinished }: OvertureProps) => {
               <button
                 type="button"
                 onClick={leave}
-                className="pointer-events-auto text-label text-navy-100 underline decoration-navy-600 underline-offset-8 transition-colors duration-200 hover:decoration-teal-300"
+                className="pointer-events-auto min-h-11 px-2 text-label text-navy-100 underline decoration-navy-600 underline-offset-8 transition-colors duration-200 hover:decoration-teal-300"
               >
                 {fa.ui.overtureEnter}
               </button>

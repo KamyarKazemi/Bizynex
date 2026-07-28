@@ -35,6 +35,75 @@
       })();
     </script>
 
+    <!--
+      Decides, before anything paints, whether this visit opens with the intro.
+
+      Without this the prerendered page paints first and the opening drops on top
+      of it a moment later, which reads as a mistake. The cover below is plain
+      static HTML, so the very first frame the browser produces is already the
+      dark room. React does not get a say until it has hydrated.
+
+      Deliberately only the two cheap checks. If this covers the page and the
+      real gate in src/hooks/useIntroGate.ts then decides against an opening —
+      no WebGL, too little memory — React pulls the cover straight back off.
+      Guessing wrong that way costs a frame. Guessing wrong the other way is the
+      flash this exists to prevent.
+    -->
+    <script>
+      (function () {
+        var seen = false;
+        try {
+          seen = sessionStorage.getItem('bizynex:intro-shown') === '1';
+        } catch (error) {
+          /* Storage blocked. Treat it as a first visit and show the opening. */
+        }
+        if (!seen && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+          document.documentElement.dataset.intro = 'pending';
+        }
+      })();
+    </script>
+
+    <!--
+      Critical styles, inline for the same reason as the scripts above: the
+      stylesheet is a separate file, and in development Vite injects it with
+      JavaScript, so neither is reliably in effect on the first paint.
+
+      These are the only hard-coded colours in the project. src/styles/tokens.css
+      remains the source of truth — navy-900 and navy-700 are copied here because
+      a custom property defined in that stylesheet cannot be read before it
+      loads. If those two tokens change, change them here too.
+    -->
+    <style>
+      #intro-cover {
+        display: none;
+      }
+      html[data-intro] #intro-cover {
+        display: flex;
+        position: fixed;
+        inset: 0;
+        z-index: 40;
+        align-items: center;
+        justify-content: center;
+        background-color: #0a1a28;
+        color: #1d3e58;
+        font-family: Vazirmatn, system-ui, sans-serif;
+        font-weight: 600;
+        font-size: clamp(2rem, 1rem + 5vw, 4.5rem);
+        letter-spacing: 0.16em;
+        transition: opacity 500ms ease-out;
+      }
+      /* The opening is on its way out and the page behind is worth seeing. */
+      html[data-intro='lifting'] #intro-cover {
+        opacity: 0;
+      }
+      /* Nothing behind the cover is reachable, so nothing behind it should
+         scroll. The gutter is reserved site-wide in tokens.css so that letting
+         go of the scrollbar again does not shift the page sideways. */
+      html[data-intro] body {
+        overflow: hidden;
+      }
+    </style>
+
     <!-- Only the body weight is preloaded. SemiBold is used for headings and
          can arrive a beat later without shifting the reading experience. -->
     <link
@@ -46,6 +115,10 @@
     />
   </head>
   <body>
+    <!-- Sits outside #root so the prerender step, which only replaces the root
+         element's contents, leaves it alone. Decorative: the same word is in the
+         page proper, and the scene draws it again a moment later. -->
+    <div id="intro-cover" aria-hidden="true" dir="ltr" lang="en">BIZYNEX</div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

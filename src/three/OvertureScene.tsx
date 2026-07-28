@@ -23,8 +23,8 @@ import {
   PCFSoftShadowMap,
   PerspectiveCamera,
   Plane,
-  Points,
   PlaneGeometry,
+  Points,
   Quaternion,
   Raycaster,
   Scene,
@@ -36,6 +36,7 @@ import {
   Vector3,
   WebGLRenderer,
 } from 'three';
+import type { OvertureAudio } from '../audio/overture';
 import { WOVEN_FIGURE } from './geometry';
 import { createRope, ROPE_POINTS } from './rope';
 import { createWordmarkTexture } from './wordmark';
@@ -49,9 +50,11 @@ export type OverturePhase = 'dark' | 'lit' | 'leaving';
 /* ------------------------------------------------------------------------- *
  * Layout of the room, in world units.
  *
- * The camera sits at the origin looking down -z. Everything below is placed
- * relative to that one fact, so moving the camera moves the composition rather
- * than breaking it.
+ * The camera looks down -z from CAMERA_Z. Everything else is placed relative to
+ * that, and anything that has to stay in frame is placed as a fraction of what
+ * is actually visible at its own depth rather than as a fixed number — which is
+ * what makes the same room work on a phone in portrait and on a widescreen
+ * monitor instead of being cropped down to a slice of itself.
  * ------------------------------------------------------------------------- */
 
 const CAMERA_Z = 12;
@@ -63,8 +66,14 @@ const FLOOR_Y = -4.4;
 /** The plane the cord swings in — in front of the type, behind the camera's nose. */
 const ROPE_Z = 2.4;
 
-/** How close a pointer must come to the cord, in CSS pixels, to catch it. */
-const GRAB_RADIUS = 44;
+/** Widest the wordmark is ever drawn, before the viewport gets a say. */
+const WORDMARK_MAX_WIDTH = 13;
+const WORDMARK_RATIO = 384 / 2048;
+
+/** Two pulls closer together than this are one pull with a bounce in it. */
+const TOGGLE_COOLDOWN_MS = 450;
+
+const half = (z: number) => Math.tan(MathUtils.degToRad(FOV / 2)) * (CAMERA_Z - z);
 
 /* ------------------------------------------------------------------------- *
  * The light beam.
@@ -107,15 +116,124 @@ const BEAM_FRAGMENT = /* glsl */ `
 `;
 
 /* ------------------------------------------------------------------------- *
- * Dust.
+ * The wordmark, and tearing it.
+ *
+ * Flat-shaded on purpose. It is a ghost in the dark for a few seconds and then
+ * it is ripped up, and neither of those wants the spotlight's shading — what it
+ * wants is control over exactly how visible it is, which a uniform gives and a
+ * lighting model does not.
+ *
+ * The tear cuts the word into horizontal bands and slides alternate ones in
+ * opposite directions at different speeds. Everything past the edge of the
+ * texture clamps to black, so the letters do not smear as they leave.
+ * ------------------------------------------------------------------------- */
+
+const WORDMARK_VERTEX = /* glsl */ `
+  varying vec2 vUv;
+
+  void main() {
+    vUv = uv;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`;
+
+const WORDMARK_FRAGMENT = /* glsl */ `
+  uniform sampler2D uMask;
+  uniform vec3 uColor;
+  uniform float uOpacity;
+  uniform float uTear;
+
+  varying vec2 vUv;
+
+  float hash(float n) {
+    return fract(sin(n * 78.233) * 43758.5453);
+  }
+
+  void main() {
+    vec2 uv = vUv;
+
+    float band = floor(vUv.y * 18.0);
+    float direction = mod(band, 2.0) * 2.0 - 1.0;
+    float speed = 0.3 + hash(band) * 1.1;
+    uv.x += direction * uTear * speed * 0.55;
+
+    // Bands drift apart vertically too, or the rip reads as a shear.
+    uv.y += (hash(band + 7.0) - 0.5) * uTear * 0.06;
+
+    float mask = texture2D(uMask, uv).g;
+    float alpha = mask * uOpacity * (1.0 - uTear);
+    if (alpha < 0.01) discard;
+
+    gl_FragColor = vec4(uColor, alpha);
+  }
+`;
+
+/* ------------------------------------------------------------------------- *
+ * The particles that become the word.
+ *
+ * Every point knows where it belongs and where it started, and interpolates
+ * between the two on one uniform. Staggering it by a per-particle seed is what
+ * turns a block of points arriving at once into a word assembling itself.
+ *
+ * All of it runs on the GPU — the CPU sets one number per frame.
+ * ------------------------------------------------------------------------- */
+
+const PARTICLE_VERTEX = /* glsl */ `
+  uniform float uProgress;
+  uniform float uLight;
+  uniform float uTime;
+  uniform float uPixelRatio;
+
+  attribute vec3 aScatter;
+  attribute float aSeed;
+
+  varying float vAlpha;
+
+  void main() {
+    // The last particle to leave still has most of the window to cross, so the
+    // stagger is subtracted from the span rather than added to the duration.
+    float stagger = 0.42;
+    float t = clamp((uProgress - aSeed * stagger) / (1.0 - stagger), 0.0, 1.0);
+    float eased = 1.0 - pow(1.0 - t, 3.0);
+
+    vec3 here = mix(position + aScatter, position, eased);
+
+    // Unrest while travelling, so the flight is not a straight line, and the
+    // faintest breathing once home so the finished word is not a dead sprite.
+    float unrest = 1.0 - eased;
+    here.x += sin(uTime * 1.7 + aSeed * 41.0) * 0.035 * unrest;
+    here.y += cos(uTime * 1.4 + aSeed * 27.0) * 0.035 * unrest;
+    here.z += sin(uTime * 0.6 + aSeed * 63.0) * 0.008 * eased;
+
+    vAlpha = eased * uLight;
+
+    vec4 viewPosition = modelViewMatrix * vec4(here, 1.0);
+    gl_PointSize = uPixelRatio * (1.0 + eased * 1.5) * (26.0 / -viewPosition.z);
+    gl_Position = projectionMatrix * viewPosition;
+  }
+`;
+
+const PARTICLE_FRAGMENT = /* glsl */ `
+  uniform vec3 uColor;
+  varying float vAlpha;
+
+  void main() {
+    float radius = length(gl_PointCoord - 0.5);
+    if (radius > 0.5) discard;
+    // Squared falloff reads as a glowing mote; linear reads as a soft disc.
+    float body = 1.0 - radius * 2.0;
+    gl_FragColor = vec4(uColor, vAlpha * body * body);
+  }
+`;
+
+/* ------------------------------------------------------------------------- *
+ * Dust in the beam.
  *
  * Motes only exist where the beam is: each one measures its own distance to the
  * beam axis in the vertex shader and fades itself out. Nothing is culled on the
  * CPU and the whole field is one draw call, so the room can be full of air
  * without costing anything to breathe.
  * ------------------------------------------------------------------------- */
-
-const DUST_COUNT = 520;
 
 const DUST_VERTEX = /* glsl */ `
   uniform float uTime;
@@ -163,11 +281,11 @@ const DUST_FRAGMENT = /* glsl */ `
   }
 `;
 
-const buildDust = () => {
-  const position = new Float32Array(DUST_COUNT * 3);
-  const seed = new Float32Array(DUST_COUNT);
+const buildDust = (count: number) => {
+  const position = new Float32Array(count * 3);
+  const seed = new Float32Array(count);
 
-  for (let i = 0; i < DUST_COUNT; i += 1) {
+  for (let i = 0; i < count; i += 1) {
     position[i * 3] = (Math.random() - 0.5) * 18;
     position[i * 3 + 1] = (Math.random() - 0.5) * 12;
     position[i * 3 + 2] = (Math.random() - 0.5) * 16 - 3;
@@ -187,22 +305,18 @@ const buildDust = () => {
  * lines, standing in the room so the spotlight has something to throw a shadow
  * from. CONTEXT.md section 3 permits reusing the construction system; this is
  * that system given thickness, not the logo moved into 3D.
+ *
+ * Built centred on its own origin so the layout pass can put it wherever the
+ * viewport has room.
  * ------------------------------------------------------------------------- */
 
 const BAR = 0.16;
 
-/** Where each copy of the figure stands: x, y, z, scale. */
-const SCULPTURES = [
-  [-4.3, -1.5, -2.2, 0.62],
-  [4.9, -2.2, -8.5, 0.42],
-] as const;
-
 const buildSculpture = () => {
-  const total = WOVEN_FIGURE.length * SCULPTURES.length;
   const mesh = new InstancedMesh(
     new BoxGeometry(1, 1, 1),
     new MeshStandardMaterial({ roughness: 0.62, metalness: 0.22 }),
-    total,
+    WOVEN_FIGURE.length,
   );
 
   const matrix = new Matrix4();
@@ -212,38 +326,60 @@ const buildSculpture = () => {
   const up = new Vector3(0, 1, 0);
   const direction = new Vector3();
 
-  let index = 0;
-  SCULPTURES.forEach(([originX, originY, originZ, size]) => {
-    WOVEN_FIGURE.forEach((segment) => {
-      const ax = segment.a[0] * size;
-      const ay = segment.a[1] * size;
-      const bx = segment.b[0] * size;
-      const by = segment.b[1] * size;
-      const length = Math.hypot(bx - ax, by - ay);
+  WOVEN_FIGURE.forEach((segment, index) => {
+    const [ax, ay] = segment.a;
+    const [bx, by] = segment.b;
+    const length = Math.hypot(bx - ax, by - ay);
 
-      position.set(originX + (ax + bx) / 2, originY + (ay + by) / 2, originZ);
-      direction.set(bx - ax, by - ay, 0).normalize();
-      rotation.setFromUnitVectors(up, direction);
-      // Bars overlap by their own width at the joints, which is what makes the
-      // weave read as one solid object rather than a pile of sticks.
-      scale.set(BAR, length + BAR, BAR);
+    position.set((ax + bx) / 2, (ay + by) / 2, 0);
+    direction.set(bx - ax, by - ay, 0).normalize();
+    rotation.setFromUnitVectors(up, direction);
+    // Bars overlap by their own width at the joints, which is what makes the
+    // weave read as one solid object rather than a pile of sticks.
+    scale.set(BAR, length + BAR, BAR);
 
-      mesh.setMatrixAt(index, matrix.compose(position, rotation, scale));
-      index += 1;
-    });
+    mesh.setMatrixAt(index, matrix.compose(position, rotation, scale));
   });
 
   return mesh;
+};
+
+/* ------------------------------------------------------------------------- *
+ * What this device can afford.
+ *
+ * One place, so the budgets can be read against each other rather than being
+ * scattered through the scene as magic numbers.
+ * ------------------------------------------------------------------------- */
+
+const budgetFor = () => {
+  const area = window.innerWidth * window.innerHeight;
+  const isSmall = window.innerWidth < 700;
+  const { deviceMemory } = navigator as Navigator & { deviceMemory?: number };
+  const lean = isSmall || (typeof deviceMemory === 'number' && deviceMemory < 8);
+
+  return {
+    // Shadows are the one genuinely expensive thing here, and a phone held at
+    // arm's length cannot resolve the difference.
+    shadows: !lean && area > 500_000,
+    shadowMap: 1024,
+    dust: lean ? 240 : 520,
+    // The wordmark is the whole point of the scene, so it is the last thing to
+    // be cut — a lean device still gets the effect, at a coarser grain.
+    particles: lean ? 3200 : 9000,
+    // Fingers are less precise than a cursor and cover what they are aiming at.
+    grabRadius: window.matchMedia('(pointer: coarse)').matches ? 68 : 44,
+  };
 };
 
 type OvertureSceneProps = {
   phase: OverturePhase;
   /** False when the tab is in the background. */
   active: boolean;
-  /** The cord was pulled hard enough to count. */
+  /** The cord was pulled hard enough to count, in either direction. */
   onPulled: () => void;
   /** First frame is on screen. The opening waits on this before trusting it. */
   onReady: () => void;
+  audio: OvertureAudio;
 };
 
 /**
@@ -253,7 +389,7 @@ type OvertureSceneProps = {
  * loaded assets. It is deliberately a closed box: it takes a phase in and
  * reports a pull out, and every animation inside is driven from those two.
  */
-const OvertureScene = ({ phase, active, onPulled, onReady }: OvertureSceneProps) => {
+const OvertureScene = ({ phase, active, onPulled, onReady, audio }: OvertureSceneProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<{
     start: () => void;
@@ -264,14 +400,18 @@ const OvertureScene = ({ phase, active, onPulled, onReady }: OvertureSceneProps)
   // Kept in refs so a new callback identity never tears down the GL context.
   const onPulledRef = useRef(onPulled);
   const onReadyRef = useRef(onReady);
+  const audioRef = useRef(audio);
   useEffect(() => {
     onPulledRef.current = onPulled;
     onReadyRef.current = onReady;
-  }, [onPulled, onReady]);
+    audioRef.current = audio;
+  }, [onPulled, onReady, audio]);
 
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
+
+    const budget = budgetFor();
 
     /* -- Renderer ------------------------------------------------------- */
 
@@ -281,11 +421,7 @@ const OvertureScene = ({ phase, active, onPulled, onReady }: OvertureSceneProps)
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.toneMapping = ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.15;
-
-    // Shadows are the one genuinely expensive thing here, and a phone held at
-    // arm's length cannot resolve the difference. Wide screens only.
-    const wantsShadows = window.innerWidth >= 900;
-    renderer.shadowMap.enabled = wantsShadows;
+    renderer.shadowMap.enabled = budget.shadows;
     renderer.shadowMap.type = PCFSoftShadowMap;
 
     const canvas = renderer.domElement;
@@ -326,7 +462,7 @@ const OvertureScene = ({ phase, active, onPulled, onReady }: OvertureSceneProps)
     );
     floor.rotation.x = -Math.PI / 2;
     floor.position.y = FLOOR_Y;
-    floor.receiveShadow = wantsShadows;
+    floor.receiveShadow = budget.shadows;
     scene.add(floor);
 
     const wall = new Mesh(
@@ -334,34 +470,109 @@ const OvertureScene = ({ phase, active, onPulled, onReady }: OvertureSceneProps)
       new MeshStandardMaterial({ color: navy800, roughness: 0.9, metalness: 0 }),
     );
     wall.position.set(0, 4, WALL_Z);
-    wall.receiveShadow = wantsShadows;
+    wall.receiveShadow = budget.shadows;
     scene.add(wall);
 
-    const sculpture = buildSculpture();
-    sculpture.castShadow = wantsShadows;
-    sculpture.receiveShadow = wantsShadows;
-    (sculpture.material as MeshStandardMaterial).color.copy(navy700);
-    scene.add(sculpture);
+    // Two copies at different depths. The near one is what the spotlight throws
+    // across the back wall; the far one is only there so the room has a middle
+    // distance and does not read as a backdrop with one prop in front of it.
+    const sculptures = [buildSculpture(), buildSculpture()];
+    sculptures.forEach((mesh) => {
+      mesh.castShadow = budget.shadows;
+      mesh.receiveShadow = budget.shadows;
+      (mesh.material as MeshStandardMaterial).color.copy(navy700);
+      scene.add(mesh);
+    });
 
     /* -- The wordmark --------------------------------------------------- */
 
-    const wordmarkTexture = createWordmarkTexture();
-    const wordmarkMaterial = new MeshStandardMaterial({
-      color: navy100,
-      alphaMap: wordmarkTexture,
+    const wordmark = createWordmarkTexture();
+    const wordmarkMaterial = new ShaderMaterial({
+      vertexShader: WORDMARK_VERTEX,
+      fragmentShader: WORDMARK_FRAGMENT,
       transparent: true,
-      roughness: 0.78,
-      metalness: 0.05,
-      // The faint glow that makes the name *almost* readable before the light
-      // comes on. Everything else about finding it is the visitor's job.
-      emissive: navy700,
-      emissiveIntensity: 0.9,
       depthWrite: false,
       side: DoubleSide,
+      uniforms: {
+        uMask: { value: wordmark.texture },
+        uColor: { value: navy100.clone() },
+        // Barely there. Enough that a visitor can tell something is written on
+        // the far wall, not enough to read it — which is the reason to reach
+        // for the light in the first place.
+        uOpacity: { value: 0.16 },
+        uTear: { value: 0 },
+      },
     });
-    const wordmark = new Mesh(new PlaneGeometry(13, 13 * (384 / 2048)), wordmarkMaterial);
-    wordmark.position.set(0, 0.5, WORDMARK_Z);
-    scene.add(wordmark);
+    const wordmarkMesh = new Mesh(new PlaneGeometry(1, 1), wordmarkMaterial);
+    wordmarkMesh.position.set(0, 0.5, WORDMARK_Z);
+    scene.add(wordmarkMesh);
+
+    /* -- The particles it becomes ---------------------------------------
+     * Built from a read-back of the wordmark canvas, which is the one genuinely
+     * expensive call in the scene — so it happens once, as soon as the real
+     * typeface is available, long before anyone can pull the cord.
+     */
+
+    const particleGroup = new Group();
+    particleGroup.position.copy(wordmarkMesh.position);
+    scene.add(particleGroup);
+
+    const particleMaterial = new ShaderMaterial({
+      vertexShader: PARTICLE_VERTEX,
+      fragmentShader: PARTICLE_FRAGMENT,
+      transparent: true,
+      depthWrite: false,
+      blending: AdditiveBlending,
+      uniforms: {
+        uProgress: { value: 0 },
+        uLight: { value: 0 },
+        uTime: { value: 0 },
+        uPixelRatio: { value: renderer.getPixelRatio() },
+        uColor: { value: bulb },
+      },
+    });
+
+    let particles: Points | null = null;
+
+    const buildParticles = () => {
+      if (particles) return;
+
+      const targets = wordmark.sample(budget.particles);
+      if (targets.length === 0) return;
+
+      const count = targets.length / 3;
+      const scatter = new Float32Array(targets.length);
+      const seed = new Float32Array(count);
+
+      for (let i = 0; i < count; i += 1) {
+        // Thrown outward from where the letter is, so the word looks like it
+        // was blown apart rather than assembled out of a cloud.
+        const angle = Math.random() * Math.PI * 2;
+        const reach = 0.12 + Math.random() * 0.5;
+        scatter[i * 3] = Math.cos(angle) * reach;
+        scatter[i * 3 + 1] = Math.sin(angle) * reach * 1.6;
+        scatter[i * 3 + 2] = (Math.random() - 0.5) * 0.5;
+        seed[i] = Math.random();
+      }
+
+      const geometry = new BufferGeometry();
+      geometry.setAttribute('position', new BufferAttribute(targets, 3));
+      geometry.setAttribute('aScatter', new BufferAttribute(scatter, 3));
+      geometry.setAttribute('aSeed', new BufferAttribute(seed, 1));
+
+      particles = new Points(geometry, particleMaterial);
+      particles.frustumCulled = false;
+      particles.renderOrder = 4;
+      particleGroup.add(particles);
+    };
+
+    // Sampling before the real face has loaded would trace the fallback's
+    // letterforms. Waiting costs nothing — the cord cannot be pulled this fast.
+    if (document.fonts) {
+      void document.fonts.ready.then(buildParticles);
+    } else {
+      buildParticles();
+    }
 
     /* -- Lighting ------------------------------------------------------- */
 
@@ -384,8 +595,8 @@ const OvertureScene = ({ phase, active, onPulled, onReady }: OvertureSceneProps)
     // fighting the first. One control, predictable everywhere.
     spot.decay = 0;
     spot.distance = 0;
-    spot.castShadow = wantsShadows;
-    spot.shadow.mapSize.set(1024, 1024);
+    spot.castShadow = budget.shadows;
+    spot.shadow.mapSize.set(budget.shadowMap, budget.shadowMap);
     spot.shadow.bias = -0.0012;
     spot.shadow.camera.near = 1;
     spot.shadow.camera.far = 34;
@@ -452,7 +663,7 @@ const OvertureScene = ({ phase, active, onPulled, onReady }: OvertureSceneProps)
         uBeam: { value: new Vector3(0, -1, 0) },
       },
     });
-    const dust = new Points(buildDust(), dustMaterial);
+    const dust = new Points(buildDust(budget.dust), dustMaterial);
     dust.frustumCulled = false;
     dust.renderOrder = 3;
     scene.add(dust);
@@ -467,7 +678,7 @@ const OvertureScene = ({ phase, active, onPulled, onReady }: OvertureSceneProps)
       new MeshStandardMaterial({ color: navy100, roughness: 0.85, emissive: navy700 }),
       ROPE_POINTS - 1,
     );
-    cord.castShadow = wantsShadows;
+    cord.castShadow = budget.shadows;
     scene.add(cord);
 
     // The single teal element on this screen, and the only thing in the room
@@ -484,55 +695,67 @@ const OvertureScene = ({ phase, active, onPulled, onReady }: OvertureSceneProps)
     );
     scene.add(handle);
 
-    /* -- Placing the lamp and cord against the viewport ------------------
-     * The cord has to sit in the corner of the *screen*, which is a different
-     * place on every aspect ratio. Everything positional is recomputed on
-     * resize rather than hard-coded, so a phone in portrait gets the same
-     * composition as a desktop and not a cropped version of it.
+    /* -- Fitting the room to the viewport --------------------------------
+     * Everything positional is recomputed here rather than hard-coded, so a
+     * phone in portrait gets the same composition as a desktop instead of a
+     * cropped version of it.
      */
 
-    const visibleHalfHeight = (z: number) =>
-      Math.tan(MathUtils.degToRad(FOV / 2)) * (camera.position.z - z);
+    const beamAxis = new Vector3();
+    const up = new Vector3(0, 1, 0);
 
-    // The cord hangs on the side the reader starts from — right in Persian,
-    // left if this ever runs LTR — so it is the first thing in the frame rather
-    // than the last, and so the HTML label beside it can use logical properties
-    // and land in the same place.
+    // Right in Persian, left if this ever runs LTR, so the HTML label beside the
+    // cord can use logical properties and land in the same place.
     const towardStart = document.documentElement.dir === 'ltr' ? -1 : 1;
 
     const layout = () => {
-      const halfHeight = visibleHalfHeight(ROPE_Z);
-      const halfWidth = halfHeight * camera.aspect;
-
+      /* The cord, in the corner of the *screen*, which is a different place on
+         every aspect ratio. It hangs on the side the reading starts from — see
+         towardStart below — so it is the first thing in the frame, not the last. */
+      const cordHalfHeight = half(ROPE_Z);
+      const cordHalfWidth = cordHalfHeight * camera.aspect;
       // Clamped so an ultra-wide window does not strand the cord out at the
       // edge of the visitor's peripheral vision.
-      const x = towardStart * Math.min(halfWidth * 0.74, 4.6);
-      const y = halfHeight - 0.55;
+      const x = towardStart * Math.min(cordHalfWidth * 0.74, 4.6);
+      const y = cordHalfHeight - 0.55;
 
       lamp.position.set(x, y, ROPE_Z);
       spot.position.set(x, y - 0.22, ROPE_Z);
       anchor.set(x, y - 0.34, ROPE_Z);
 
-      // The beam is a cone standing from the target up to the lamp.
+      /* The wordmark, as wide as it can be without touching the sides. */
+      const markHalfWidth = half(WORDMARK_Z) * camera.aspect;
+      const width = Math.min(WORDMARK_MAX_WIDTH, markHalfWidth * 2 * 0.86);
+      const height = width * WORDMARK_RATIO;
+      wordmarkMesh.scale.set(width, height, 1);
+      // The sampled points run -0.5 to 0.5 in both directions, so scaling the
+      // group by the plane's size puts every particle exactly on its letter.
+      particleGroup.scale.set(width, height, (width + height) / 2);
+
+      /* The sculptures, out at the edges of whatever is visible at their depth,
+         and never so far out that they leave the frame on a narrow screen. */
+      const nearHalfWidth = half(-2.2) * camera.aspect;
+      sculptures[0].position.set(-Math.min(nearHalfWidth * 0.72, 4.3), -1.5, -2.2);
+      sculptures[0].scale.setScalar(0.62);
+      const farHalfWidth = half(-8.5) * camera.aspect;
+      sculptures[1].position.set(Math.min(farHalfWidth * 0.66, 4.9), -2.2, -8.5);
+      sculptures[1].scale.setScalar(0.42);
+
+      /* The beam: a cone standing from what is lit up to the lamp. */
       const target = spot.target.position;
-      const axis = new Vector3().subVectors(spot.position, target);
-      const length = axis.length();
+      beamAxis.subVectors(spot.position, target);
+      const length = beamAxis.length();
       const spread = Math.tan(spot.angle) * length;
       beam.scale.set(spread, length, spread);
-      beam.position.copy(target).addScaledVector(axis, 0.5);
-      beam.quaternion.setFromUnitVectors(new Vector3(0, 1, 0), axis.normalize());
+      beam.position.copy(target).addScaledVector(beamAxis, 0.5);
+      beamAxis.normalize();
+      beam.quaternion.setFromUnitVectors(up, beamAxis);
 
       dustMaterial.uniforms.uLamp.value.copy(spot.position);
-      dustMaterial.uniforms.uBeam.value.copy(axis).negate();
+      dustMaterial.uniforms.uBeam.value.copy(beamAxis).negate();
 
       // The shade tips toward what it is lighting, like a real one would.
-      shade.quaternion.setFromUnitVectors(new Vector3(0, 1, 0), axis);
-
-      // The anchor just moved, so the cord has to be re-hung under it — without
-      // this it spends its first frames whipping in from wherever it was built.
-      // A resize mid-drag drops the cord for exactly one frame before the next
-      // pointer move catches it again, which is not worth a flag to prevent.
-      rope.reseat();
+      shade.quaternion.setFromUnitVectors(up, beamAxis);
     };
 
     const resize = () => {
@@ -553,7 +776,6 @@ const OvertureScene = ({ phase, active, onPulled, onReady }: OvertureSceneProps)
     const midpoint = new Vector3();
     const span = new Vector3();
     const heading = new Vector3();
-    const up = new Vector3(0, 1, 0);
 
     const drawCord = () => {
       for (let i = 0; i < ROPE_POINTS - 1; i += 1) {
@@ -586,27 +808,11 @@ const OvertureScene = ({ phase, active, onPulled, onReady }: OvertureSceneProps)
     const projected = new Vector3();
 
     let dragging = false;
-    let fired = false;
+    let lastToggle = 0;
     /** True once the *visitor* pulled it, so the keyboard path knows to stand down. */
     let pulledByHand = false;
 
-    const toNdc = (event: PointerEvent) => {
-      const bounds = container.getBoundingClientRect();
-      ndc.set(
-        ((event.clientX - bounds.left) / bounds.width) * 2 - 1,
-        -((event.clientY - bounds.top) / bounds.height) * 2 + 1,
-      );
-      return bounds;
-    };
-
-    /**
-     * Screen-space distance from the pointer to the cord, in CSS pixels.
-     *
-     * Distance to the *points*, not to the segments between them. The cord is
-     * only about twenty pixels per segment on screen, which is well inside the
-     * grab radius, so the gaps the cheap version misses are gaps nobody can aim
-     * at anyway.
-     */
+    /** Screen-space distance from the pointer to the cord, in CSS pixels. */
     const distanceToCord = (event: PointerEvent) => {
       const bounds = container.getBoundingClientRect();
       const x = event.clientX - bounds.left;
@@ -623,22 +829,27 @@ const OvertureScene = ({ phase, active, onPulled, onReady }: OvertureSceneProps)
     };
 
     const onPointerDown = (event: PointerEvent) => {
-      if (fired || distanceToCord(event) > GRAB_RADIUS) return;
+      if (distanceToCord(event) > budget.grabRadius) return;
       dragging = true;
       canvas.setPointerCapture(event.pointerId);
       container.style.cursor = 'grabbing';
+      // A pointer landing on the cord is as clear a gesture as browsers ask for.
+      audioRef.current.unlock();
       event.preventDefault();
     };
 
     const onPointerMove = (event: PointerEvent) => {
       if (!dragging) {
-        if (!fired) {
-          container.style.cursor = distanceToCord(event) <= GRAB_RADIUS ? 'grab' : 'default';
-        }
+        container.style.cursor =
+          distanceToCord(event) <= budget.grabRadius ? 'grab' : 'default';
         return;
       }
 
-      toNdc(event);
+      const bounds = container.getBoundingClientRect();
+      ndc.set(
+        ((event.clientX - bounds.left) / bounds.width) * 2 - 1,
+        -((event.clientY - bounds.top) / bounds.height) * 2 + 1,
+      );
       raycaster.setFromCamera(ndc, camera);
       if (raycaster.ray.intersectPlane(ropePlane, dragTarget)) rope.hold(dragTarget);
     };
@@ -649,10 +860,13 @@ const OvertureScene = ({ phase, active, onPulled, onReady }: OvertureSceneProps)
       container.style.cursor = 'default';
       if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
 
+      audioRef.current.strain(0);
+
       // The cord reports how hard it was being pulled at the moment it was let
       // go, so a slow drag that never went taut correctly does nothing.
-      if (rope.release() >= 1 && !fired) {
-        fired = true;
+      const now = performance.now();
+      if (rope.release() >= 1 && now - lastToggle > TOGGLE_COOLDOWN_MS) {
+        lastToggle = now;
         pulledByHand = true;
         onPulledRef.current();
       }
@@ -666,54 +880,117 @@ const OvertureScene = ({ phase, active, onPulled, onReady }: OvertureSceneProps)
     /* -- Phases --------------------------------------------------------- */
 
     const timelines: gsap.core.Timeline[] = [];
+    let isLit = false;
+    let hasFormed = false;
 
-    const lightUp = () => {
-      const light = gsap.timeline();
-      timelines.push(light);
+    const track = (timeline: gsap.core.Timeline) => {
+      timelines.push(timeline);
+      return timeline;
+    };
 
-      // A real bulb does not fade up. It catches, drops, and then holds.
-      light
-        .to(spot, { intensity: 2.6, duration: 0.05 })
-        .to(spot, { intensity: 0.35, duration: 0.07 })
-        .to(spot, { intensity: 3.9, duration: 0.09 })
-        .to(spot, { intensity: 3.1, duration: 0.7, ease: 'power2.out' })
-        .to(bulbMaterial, { emissiveIntensity: 1.6, duration: 0.9 }, 0)
-        .to(beamMaterial.uniforms.uOpacity, { value: 0.34, duration: 1.1 }, 0.1)
-        .to(dustMaterial.uniforms.uLight, { value: 1, duration: 1.6 }, 0.1)
-        .to(wordmarkMaterial, { emissiveIntensity: 0.4, duration: 1.2 }, 0.2)
-        .to(rim, { intensity: 0.18, duration: 1.2 }, 0.2);
-
-      // Nobody pulled anything — the visitor used the keyboard — so the cord
-      // has to pull itself, or the light comes on for no visible reason.
-      if (pulledByHand) return;
-
+    /** Nobody pulled anything — the keyboard did — so the cord pulls itself. */
+    const pullItself = () => {
       const hand = { t: 0 };
-      const pull = gsap.timeline();
-      timelines.push(pull);
-      pull.to(hand, {
+      track(gsap.timeline()).to(hand, {
         t: 1,
         duration: 0.28,
         ease: 'power2.in',
         onUpdate: () => {
-          // Ends past the point a hand would have to reach to trip the switch,
-          // so the keyboard pull looks like the same gesture it stands in for.
           dragTarget.copy(anchor);
-          dragTarget.y -= rope.reach + 1.1 * hand.t;
+          dragTarget.y -= rope.reach + 0.55 * hand.t;
           rope.hold(dragTarget);
         },
         onComplete: () => rope.release(),
       });
     };
 
+    /**
+     * The reveal, which only happens the first time. After that the light is
+     * just a light — the word has already been assembled and stays assembled.
+     */
+    const form = () => {
+      hasFormed = true;
+      buildParticles();
+
+      const reveal = track(gsap.timeline());
+      reveal
+        // Caught in the beam, whole, for a fifth of a second.
+        .to(wordmarkMaterial.uniforms.uOpacity, { value: 1, duration: 0.16 }, 0)
+        // Then it comes apart.
+        .to(wordmarkMaterial.uniforms.uTear, {
+          value: 1,
+          duration: 0.4,
+          ease: 'power2.in',
+          onStart: () => audioRef.current.tear(),
+        }, 0.18)
+        // A beat of nothing, which is what makes the rebuild land.
+        .to(
+          particleMaterial.uniforms.uProgress,
+          {
+            value: 1,
+            duration: 1.5,
+            ease: 'none',
+            onStart: () => audioRef.current.shimmer(),
+          },
+          0.68,
+        );
+    };
+
+    const setLight = (on: boolean) => {
+      const wasHand = pulledByHand;
+      pulledByHand = false;
+      if (!wasHand) pullItself();
+
+      audioRef.current.click(on);
+      audioRef.current.hum(on);
+
+      const light = track(gsap.timeline());
+
+      if (on) {
+        // A real bulb does not fade up. It catches, drops, and then holds.
+        light
+          .to(spot, { intensity: 2.6, duration: 0.05 })
+          .to(spot, { intensity: 0.35, duration: 0.07 })
+          .to(spot, { intensity: 3.9, duration: 0.09 })
+          .to(spot, { intensity: 3.1, duration: 0.7, ease: 'power2.out' })
+          .to(bulbMaterial, { emissiveIntensity: 1.6, duration: 0.9 }, 0)
+          .to(beamMaterial.uniforms.uOpacity, { value: 0.34, duration: 1.1 }, 0.1)
+          .to(dustMaterial.uniforms.uLight, { value: 1, duration: 1.6 }, 0.1)
+          .to(rim, { intensity: 0.18, duration: 1.2 }, 0.2);
+
+        // Already assembled: bring the word back up with the light rather than
+        // tearing a plane that is no longer there.
+        if (hasFormed) {
+          light.to(particleMaterial.uniforms.uLight, { value: 1, duration: 0.8 }, 0.05);
+        } else {
+          form();
+          light.to(particleMaterial.uniforms.uLight, { value: 1, duration: 0.5 }, 0.68);
+        }
+        return;
+      }
+
+      light
+        .to(spot, { intensity: 0, duration: 0.14, ease: 'power2.in' })
+        .to(bulbMaterial, { emissiveIntensity: 0, duration: 0.3 }, 0)
+        .to(beamMaterial.uniforms.uOpacity, { value: 0, duration: 0.3 }, 0)
+        .to(dustMaterial.uniforms.uLight, { value: 0, duration: 0.4 }, 0)
+        .to(rim, { intensity: 0.35, duration: 0.6 }, 0)
+        // Not to nothing. The word stays as a ghost, the way it was before the
+        // light — otherwise turning it off looks like the scene broke.
+        .to(particleMaterial.uniforms.uLight, { value: 0.13, duration: 0.5 }, 0);
+    };
+
     const leave = () => {
-      const exit = gsap.timeline();
-      timelines.push(exit);
+      audioRef.current.whoosh();
+      audioRef.current.hum(false);
+      audioRef.current.strain(0);
+
       // Straight through the name and out the other side.
-      exit
+      track(gsap.timeline())
         .to(camera.position, { z: -2.5, duration: 1, ease: 'power2.in' })
-        .to(wordmarkMaterial, { opacity: 0, duration: 0.5 }, 0.35)
         .to(spot, { intensity: 8, duration: 1 }, 0)
-        .to(beamMaterial.uniforms.uOpacity, { value: 0, duration: 0.6 }, 0.3);
+        .to(beamMaterial.uniforms.uOpacity, { value: 0, duration: 0.6 }, 0.3)
+        .to(particleMaterial.uniforms.uLight, { value: 0, duration: 0.7 }, 0.3);
     };
 
     /* -- Loop ----------------------------------------------------------- */
@@ -741,14 +1018,16 @@ const OvertureScene = ({ phase, active, onPulled, onReady }: OvertureSceneProps)
       elapsed += delta;
 
       dustMaterial.uniforms.uTime.value = elapsed;
+      particleMaterial.uniforms.uTime.value = elapsed;
 
       rope.advance(delta);
       drawCord();
 
-      // Live feedback: the ring brightens as the cord goes taut, so a visitor
-      // who is half-pulling can tell they are on the right track.
+      // Live feedback: the ring brightens and the rope sounds like it is under
+      // load, so a visitor who is half-pulling can tell they are on track.
       const tension = rope.tension();
       (handle.material as MeshStandardMaterial).emissiveIntensity = 0.85 + tension * 1.8;
+      if (dragging) audioRef.current.strain(tension);
 
       // A hand-held camera's worth of movement and no more. During the exit the
       // timeline owns the camera, so parallax steps aside rather than fighting.
@@ -779,14 +1058,16 @@ const OvertureScene = ({ phase, active, onPulled, onReady }: OvertureSceneProps)
         frame = 0;
       },
       play: (next) => {
-        if (next === 'lit') {
-          fired = true;
-          lightUp();
-        }
         if (next === 'leaving') {
           leaving = true;
           leave();
+          return;
         }
+
+        const wantsLight = next === 'lit';
+        if (wantsLight === isLit) return;
+        isLit = wantsLight;
+        setLight(wantsLight);
       },
     };
 
@@ -812,7 +1093,7 @@ const OvertureScene = ({ phase, active, onPulled, onReady }: OvertureSceneProps)
         if (Array.isArray(material)) material.forEach((entry) => entry.dispose());
         else material?.dispose();
       });
-      wordmarkTexture.dispose();
+      wordmark.texture.dispose();
       spot.shadow.map?.dispose();
 
       // Releases the GL context outright rather than waiting on the garbage
