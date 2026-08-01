@@ -28,3 +28,29 @@ export const liftCover = () => {
 export const removeCover = () => {
   delete document.documentElement.dataset.intro;
 };
+
+/**
+ * Runs `start` at the moment the page underneath becomes visible — immediately
+ * if there is no opening on this visit.
+ *
+ * This is what keeps the hero's entrance from being wasted. Without it the
+ * lattice assembles itself behind a solid panel and is already finished by the
+ * time anyone sees it; with it, the drawing pulls together in the same beat that
+ * the opening hands over. Returns a disposer.
+ */
+export const whenCoverLifts = (start: () => void) => {
+  const root = document.documentElement;
+  if (!root.dataset.intro) {
+    start();
+    return () => undefined;
+  }
+
+  const observer = new MutationObserver(() => {
+    if (root.dataset.intro === 'pending') return;
+    observer.disconnect();
+    start();
+  });
+  observer.observe(root, { attributes: true, attributeFilter: ['data-intro'] });
+
+  return () => observer.disconnect();
+};

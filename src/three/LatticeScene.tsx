@@ -15,6 +15,7 @@ import {
   Vector2,
   WebGLRenderer,
 } from 'three';
+import { whenCoverLifts } from '../hooks/introCover';
 import { buildLattice, STROKE } from './geometry';
 
 gsap.registerPlugin(ScrollTrigger);
@@ -260,8 +261,14 @@ const LatticeScene = ({ targetId, active, onReady }: LatticeSceneProps) => {
     resizeObserver.observe(container);
 
     // The entrance is the brand argument in one gesture: scattered parts pulling
-    // into a drawing that holds. It runs once, as the intro curtain lifts.
-    const entrance = gsap.timeline();
+    // into a drawing that holds. It runs once, and it is held until the opening
+    // actually uncovers the page — otherwise it plays out behind a solid panel
+    // and the one moment it exists for happens where nobody can see it.
+    //
+    // It is also the catch. The opening throws the wordmark's particles at this
+    // panel and they land while these segments are still converging, so the two
+    // scenes are doing the same thing at the same time in the same place.
+    const entrance = gsap.timeline({ paused: true });
     entrance
       .to(material.uniforms.uOpacity, { value: 1, duration: 0.9, ease: 'none' })
       .to(
@@ -269,6 +276,7 @@ const LatticeScene = ({ targetId, active, onReady }: LatticeSceneProps) => {
         { value: 0, duration: 2.4, ease: 'power3.inOut' },
         0,
       );
+    const stopWaiting = whenCoverLifts(() => entrance.play());
 
     // Scroll takes over once the entrance is done, so the two never fight.
     const scrolled = { value: 0 };
@@ -298,13 +306,25 @@ const LatticeScene = ({ targetId, active, onReady }: LatticeSceneProps) => {
     let frame = 0;
     let last = performance.now();
     let announced = false;
+    let elapsed = 0;
 
     const tick = (now: number) => {
       frame = requestAnimationFrame(tick);
       const delta = Math.min((now - last) / 1000, 0.1);
       last = now;
+      elapsed += delta;
 
       material.uniforms.uTime.value += delta;
+
+      // The camera is never quite still. Three slow, mutually prime periods, so
+      // the movement never visibly repeats and never resolves to a rest pose —
+      // the drawing reads as something being looked at rather than a picture of
+      // itself. Small enough that it is felt before it is noticed: the whole
+      // orbit is under a degree of arc.
+      camera.position.x = Math.sin(elapsed * 0.13) * 0.5;
+      camera.position.y = Math.cos(elapsed * 0.11) * 0.32;
+      camera.position.z = 16 + Math.sin(elapsed * 0.07) * 0.55;
+      camera.lookAt(0, 0, 0);
 
       if (!entrance.isActive() && entrance.progress() === 1) {
         material.uniforms.uProgress.value = MathUtils.damp(
@@ -362,6 +382,7 @@ const LatticeScene = ({ targetId, active, onReady }: LatticeSceneProps) => {
       frame = 0;
       loopRef.current = null;
       themeObserver.disconnect();
+      stopWaiting();
       entrance.kill();
       trigger.kill();
       resizeObserver.disconnect();

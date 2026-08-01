@@ -2,6 +2,7 @@ import { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react'
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { useAppSelector } from '../store';
 import { selectCanvasEnabled } from '../store/capabilitySlice';
+import { LATTICE_PANEL_ATTR } from './handoff';
 import { LatticeFallback } from './LatticeFallback';
 
 // Lazy so three.js lands in its own chunk and never blocks first paint.
@@ -57,7 +58,9 @@ export const LatticeCanvas = ({ targetId, className }: LatticeCanvasProps) => {
   }, [canvasEnabled]);
 
   return (
-    <div ref={containerRef} aria-hidden="true" className={className}>
+    // Marked so the opening can find this panel on screen and throw the wordmark
+    // into it. See src/three/handoff.ts — the attribute is the whole contract.
+    <div ref={containerRef} aria-hidden="true" className={className} {...{ [LATTICE_PANEL_ATTR]: '' }}>
       <LatticeFallback
         className={`absolute inset-0 h-full w-full transition-opacity duration-500 ${
           hasPaintedFrame ? 'opacity-0' : 'opacity-100'

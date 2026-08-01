@@ -14,8 +14,18 @@ import type { OverturePhase } from '../three/OvertureScene';
  * takes over. Turning the light back off stops the clock.
  */
 const COUNTDOWN_MS = 6500;
-/** Must match the exit timeline in OvertureScene. */
-const LEAVE_MS = 1100;
+/**
+ * The exit, and the moment inside it when the page appears.
+ *
+ * Both must match the timeline in OvertureScene. The reveal deliberately lands
+ * in the *middle* of the throw, not at the end of it: the wordmark's particles
+ * are still crossing the screen when the hero starts drawing itself, so for
+ * about half a second both scenes are running and moving the same way. That
+ * overlap is the entire transition — reveal at the end and it is a fade with
+ * extra steps.
+ */
+const LEAVE_MS = 1750;
+const REVEAL_AT_MS = 820;
 
 /**
  * How long a visitor may be held in front of an empty room before we give up on
@@ -155,11 +165,18 @@ export const Overture = ({ onFinished }: OvertureProps) => {
 
   useEffect(() => {
     if (phase !== 'leaving') return;
+
     // The cover from index.html is the same navy and sits directly behind this
-    // panel. Both have to fade together or the exit reveals another dark screen.
-    liftCover();
-    const timer = window.setTimeout(() => finishRef.current(), LEAVE_MS);
-    return () => window.clearTimeout(timer);
+    // panel, so both have to go together or the exit reveals another dark
+    // screen. Lifting it is also what starts the hero's own entrance — see
+    // whenCoverLifts — which is how the two scenes end up in step.
+    const reveal = window.setTimeout(liftCover, REVEAL_AT_MS);
+    const done = window.setTimeout(() => finishRef.current(), LEAVE_MS);
+
+    return () => {
+      window.clearTimeout(reveal);
+      window.clearTimeout(done);
+    };
   }, [phase]);
 
   const isLit = phase !== 'dark';
@@ -172,9 +189,18 @@ export const Overture = ({ onFinished }: OvertureProps) => {
     <div
       role="dialog"
       aria-label={fa.ui.overtureTitle}
-      className={`fixed inset-0 z-50 bg-navy-900 transition-opacity duration-500 ${
+      className={`fixed inset-0 z-50 bg-navy-900 ${
         phase === 'leaving' ? 'opacity-0' : 'opacity-100'
       }`}
+      style={{
+        transitionProperty: 'opacity',
+        transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)',
+        transitionDuration: '640ms',
+        // Held opaque for the first half of the exit so the throw happens in
+        // the room, and only then handed over. Without the delay the room
+        // dissolves out from under the particles on frame one.
+        transitionDelay: phase === 'leaving' ? `${REVEAL_AT_MS}ms` : '0ms',
+      }}
     >
       <div aria-hidden="true" className="absolute inset-0">
         <OvertureCanvas

@@ -35,8 +35,13 @@ export type OvertureAudio = {
   tear: () => void;
   /** The particles finding their places. */
   shimmer: () => void;
-  /** The camera leaving through the far wall. */
-  whoosh: () => void;
+  /**
+   * The room sweeping past on the way out. `direction` is -1 for a move toward
+   * the left of the screen and +1 toward the right; the sound travels with it.
+   */
+  whoosh: (direction: number) => void;
+  /** The wordmark arriving in the page. A full stop, not a flourish. */
+  settle: () => void;
   setMuted: (muted: boolean) => void;
   dispose: () => void;
 };
@@ -92,6 +97,9 @@ export const createOvertureAudio = (): OvertureAudio => {
     peak: number;
     duration: number;
     q?: number;
+    /** Stereo position at the start and end, -1 left to +1 right. */
+    panFrom?: number;
+    panTo?: number;
   }) => {
     if (!ready() || context === null || master === null || noise === null) return;
     const now = context.currentTime;
@@ -113,7 +121,19 @@ export const createOvertureAudio = (): OvertureAudio => {
     gain.gain.exponentialRampToValueAtTime(options.peak, now + options.duration * 0.15);
     gain.gain.exponentialRampToValueAtTime(0.0001, end);
 
-    source.connect(filter).connect(gain).connect(master);
+    source.connect(filter).connect(gain);
+
+    // Panning is only ever an enhancement here — on a phone speaker there is no
+    // stereo field to place anything in, and the sound has to work anyway.
+    if (options.panFrom !== undefined && typeof context.createStereoPanner === 'function') {
+      const panner = context.createStereoPanner();
+      panner.pan.setValueAtTime(options.panFrom, now);
+      panner.pan.linearRampToValueAtTime(options.panTo ?? options.panFrom, end);
+      gain.connect(panner).connect(master);
+    } else {
+      gain.connect(master);
+    }
+
     source.start(now, offset, options.duration);
     source.stop(end);
   };
@@ -249,8 +269,42 @@ export const createOvertureAudio = (): OvertureAudio => {
     });
   };
 
-  const whoosh = () =>
-    burst({ type: 'lowpass', from: 260, to: 5000, peak: 0.26, duration: 1, q: 0.8 });
+  // Crosses the stereo field against the direction of travel, which is how a
+  // room actually sounds going past you: it starts on the side you are leaving.
+  const whoosh = (direction: number) =>
+    burst({
+      type: 'bandpass',
+      from: 190,
+      to: 2600,
+      peak: 0.3,
+      duration: 1.4,
+      q: 0.7,
+      panFrom: -direction,
+      panTo: direction,
+    });
+
+  const settle = () => {
+    if (!ready() || context === null || master === null) return;
+    const now = context.currentTime;
+
+    // Low, short, and slightly detuned against itself so it lands as weight
+    // rather than as a note. This is the sound of something arriving.
+    [58, 87].forEach((frequency, index) => {
+      const tone = context!.createOscillator();
+      tone.type = 'sine';
+      tone.frequency.setValueAtTime(frequency * 1.5, now);
+      tone.frequency.exponentialRampToValueAtTime(frequency, now + 0.18);
+
+      const gain = context!.createGain();
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(index === 0 ? 0.16 : 0.07, now + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.7);
+
+      tone.connect(gain).connect(master!);
+      tone.start(now);
+      tone.stop(now + 0.75);
+    });
+  };
 
   const setMuted = (next: boolean) => {
     muted = next;
@@ -272,5 +326,5 @@ export const createOvertureAudio = (): OvertureAudio => {
     strainFilter = null;
   };
 
-  return { unlock, click, hum, strain, tear, shimmer, whoosh, setMuted, dispose };
+  return { unlock, click, hum, strain, tear, shimmer, whoosh, settle, setMuted, dispose };
 };

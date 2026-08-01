@@ -26,6 +26,7 @@ import {
   PlaneGeometry,
   Points,
   Quaternion,
+  Ray,
   Raycaster,
   Scene,
   ShaderMaterial,
@@ -38,6 +39,7 @@ import {
 } from 'three';
 import type { OvertureAudio } from '../audio/overture';
 import { WOVEN_FIGURE } from './geometry';
+import { readLatticePanelRect } from './handoff';
 import { createRope, ROPE_POINTS } from './rope';
 import { createWordmarkTexture } from './wordmark';
 
@@ -183,8 +185,11 @@ const PARTICLE_VERTEX = /* glsl */ `
   uniform float uLight;
   uniform float uTime;
   uniform float uPixelRatio;
+  uniform float uExit;
+  uniform vec3 uExitTarget;
 
   attribute vec3 aScatter;
+  attribute vec3 aBurst;
   attribute float aSeed;
 
   varying float vAlpha;
@@ -205,10 +210,33 @@ const PARTICLE_VERTEX = /* glsl */ `
     here.y += cos(uTime * 1.4 + aSeed * 27.0) * 0.035 * unrest;
     here.z += sin(uTime * 0.6 + aSeed * 63.0) * 0.008 * eased;
 
-    vAlpha = eased * uLight;
+    /* -- Leaving ------------------------------------------------------------
+     * Every particle is thrown, and every particle lands in the panel the hero's
+     * drawing occupies. This is projectile motion solved rather than integrated:
+     * given a launch velocity and a flight time, there is exactly one constant
+     * acceleration that arrives on target, and it is worth writing out —
+     *
+     *   p(t) = p0 + v0*t + 0.5*a*t^2      and we want p(1) = target
+     *   =>  a = 2 * ((target - p0) - v0)
+     *
+     * so the curve is genuinely ballistic, costs no simulation, and cannot drift
+     * off target however the camera moves underneath it. Recomputing against a
+     * target that moves each frame turns it into a homing arc for free.
+     */
+    float flight = clamp((uExit - aSeed * 0.25) / 0.75, 0.0, 1.0);
+    vec3 toTarget = uExitTarget - here;
+    vec3 accel = 2.0 * (toTarget - aBurst);
+    here += aBurst * flight + 0.5 * accel * flight * flight;
+
+    // Held bright almost the whole way across, then handed over. Fading them out
+    // early would make this a dissolve, which is the one thing it must not be.
+    vAlpha = eased * uLight * (1.0 - smoothstep(0.72, 1.0, flight));
 
     vec4 viewPosition = modelViewMatrix * vec4(here, 1.0);
-    gl_PointSize = uPixelRatio * (1.0 + eased * 1.5) * (26.0 / -viewPosition.z);
+    // They are flying into a panel a fraction of the size of the room, so they
+    // have to condense on the way or they arrive as a cloud over the top of it.
+    float condense = mix(1.0, 0.4, flight);
+    gl_PointSize = uPixelRatio * (1.0 + eased * 1.5) * condense * (26.0 / -viewPosition.z);
     gl_Position = projectionMatrix * viewPosition;
   }
 `;
@@ -513,6 +541,11 @@ const OvertureScene = ({ phase, active, onPulled, onReady, audio }: OvertureScen
      * typeface is available, long before anyone can pull the cord.
      */
 
+    // The hero's drawing sits in the second column of the page's grid, which
+    // lands on the reading-end side — left in Persian. That is the direction the
+    // whole exit moves in, and the direction the wordmark is thrown.
+    const towardPage = document.documentElement.dir === 'ltr' ? 1 : -1;
+
     const particleGroup = new Group();
     particleGroup.position.copy(wordmarkMesh.position);
     scene.add(particleGroup);
@@ -529,6 +562,8 @@ const OvertureScene = ({ phase, active, onPulled, onReady, audio }: OvertureScen
         uTime: { value: 0 },
         uPixelRatio: { value: renderer.getPixelRatio() },
         uColor: { value: bulb },
+        uExit: { value: 0 },
+        uExitTarget: { value: new Vector3() },
       },
     });
 
@@ -542,6 +577,7 @@ const OvertureScene = ({ phase, active, onPulled, onReady, audio }: OvertureScen
 
       const count = targets.length / 3;
       const scatter = new Float32Array(targets.length);
+      const burst = new Float32Array(targets.length);
       const seed = new Float32Array(count);
 
       for (let i = 0; i < count; i += 1) {
@@ -552,12 +588,21 @@ const OvertureScene = ({ phase, active, onPulled, onReady, audio }: OvertureScen
         scatter[i * 3] = Math.cos(angle) * reach;
         scatter[i * 3 + 1] = Math.sin(angle) * reach * 1.6;
         scatter[i * 3 + 2] = (Math.random() - 0.5) * 0.5;
+
+        // The launch. Biased hard toward the side the page is about to arrive
+        // from, so the throw has a direction before it has a destination — the
+        // spread is what stops several thousand points moving as one sheet.
+        burst[i * 3] = towardPage * (0.3 + Math.random() * 0.6);
+        burst[i * 3 + 1] = (Math.random() - 0.5) * 0.55;
+        burst[i * 3 + 2] = (Math.random() - 0.5) * 0.45;
+
         seed[i] = Math.random();
       }
 
       const geometry = new BufferGeometry();
       geometry.setAttribute('position', new BufferAttribute(targets, 3));
       geometry.setAttribute('aScatter', new BufferAttribute(scatter, 3));
+      geometry.setAttribute('aBurst', new BufferAttribute(burst, 3));
       geometry.setAttribute('aSeed', new BufferAttribute(seed, 1));
 
       particles = new Points(geometry, particleMaterial);
@@ -980,17 +1025,76 @@ const OvertureScene = ({ phase, active, onPulled, onReady, audio }: OvertureScen
         .to(particleMaterial.uniforms.uLight, { value: 0.13, duration: 0.5 }, 0);
     };
 
+    /* -- Leaving ---------------------------------------------------------
+     * The wordmark is not dismissed, it is thrown — across the frame and into
+     * the panel the hero's drawing occupies, arriving while that drawing is
+     * still pulling itself together. The room goes with it: the camera trucks
+     * sideways instead of pushing in, so everything parallaxes past at its own
+     * depth. The cord, nearest the lens, sweeps right across the frame; the far
+     * wall barely moves. That depth is the reason to have built a room at all,
+     * and a fade would spend none of it.
+     */
+
+    /** Where on screen the throw is aimed, in CSS pixels. */
+    let exitRect: DOMRect | null = null;
+    const exitPlane = new Plane(new Vector3(0, 0, 1), -WORDMARK_Z);
+    const exitRay = new Ray();
+    const exitTarget = new Vector3();
+
+    const aimAtPage = () => {
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+
+      // No panel means no WebGL hero waiting to catch this — the throw still has
+      // to go somewhere, so it goes where the panel would have been.
+      const x = exitRect ? exitRect.left + exitRect.width / 2 : width * (towardPage < 0 ? 0.24 : 0.76);
+      const y = exitRect ? exitRect.top + exitRect.height / 2 : height * 0.5;
+
+      // Screen point to a world point on the plane the letters live in. Redone
+      // every frame because the camera is moving underneath it: the target is
+      // fixed on the page, which means it is travelling through the room.
+      camera.updateMatrixWorld();
+      exitTarget.set((x / width) * 2 - 1, -((y / height) * 2 - 1), 0.5).unproject(camera);
+      exitRay.origin.copy(camera.position);
+      exitRay.direction.copy(exitTarget).sub(camera.position).normalize();
+      if (!exitRay.intersectPlane(exitPlane, exitTarget)) return;
+
+      particleGroup.updateWorldMatrix(true, false);
+      particleMaterial.uniforms.uExitTarget.value.copy(particleGroup.worldToLocal(exitTarget));
+    };
+
     const leave = () => {
-      audioRef.current.whoosh();
+      audioRef.current.whoosh(towardPage);
       audioRef.current.hum(false);
       audioRef.current.strain(0);
 
-      // Straight through the name and out the other side.
+      // Measured once. The page underneath is static and its scrollbar gutter is
+      // reserved, so this cannot move during the exit — and reading layout on
+      // every frame of an animation is how you lose the frames.
+      exitRect = readLatticePanelRect();
+      aimAtPage();
+
       track(gsap.timeline())
-        .to(camera.position, { z: -2.5, duration: 1, ease: 'power2.in' })
-        .to(spot, { intensity: 8, duration: 1 }, 0)
-        .to(beamMaterial.uniforms.uOpacity, { value: 0, duration: 0.6 }, 0.3)
-        .to(particleMaterial.uniforms.uLight, { value: 0, duration: 0.7 }, 0.3);
+        .to(
+          camera.position,
+          { x: -towardPage * 5.2, z: 9.4, duration: 1.5, ease: 'power2.inOut' },
+          0,
+        )
+        .to(particleMaterial.uniforms.uExit, {
+          value: 1,
+          // Linear on purpose. The shader's trajectory is a real constant
+          // acceleration, and easing the input as well would flatten the arc
+          // into something that merely slides.
+          ease: 'none',
+          duration: 1.25,
+          onComplete: () => audioRef.current.settle(),
+        }, 0.05)
+        // One last flare as it goes, then the room lets go of the light.
+        .to(spot, { intensity: 5.4, duration: 0.45, ease: 'power2.out' }, 0)
+        .to(spot, { intensity: 0, duration: 0.75 }, 0.55)
+        .to(bulbMaterial, { emissiveIntensity: 0, duration: 0.7 }, 0.55)
+        .to(beamMaterial.uniforms.uOpacity, { value: 0, duration: 0.5 }, 0.2)
+        .to(dustMaterial.uniforms.uLight, { value: 0, duration: 0.6 }, 0.25);
     };
 
     /* -- Loop ----------------------------------------------------------- */
@@ -1030,8 +1134,12 @@ const OvertureScene = ({ phase, active, onPulled, onReady, audio }: OvertureScen
       if (dragging) audioRef.current.strain(tension);
 
       // A hand-held camera's worth of movement and no more. During the exit the
-      // timeline owns the camera, so parallax steps aside rather than fighting.
-      if (!leaving) {
+      // timeline owns the camera, so parallax steps aside rather than fighting —
+      // and the orientation is left alone, which turns the move into a truck
+      // past the room rather than a pan that keeps staring at the middle of it.
+      if (leaving) {
+        aimAtPage();
+      } else {
         easedDrift.x = MathUtils.damp(easedDrift.x, pointerDrift.x, 2.6, delta);
         easedDrift.y = MathUtils.damp(easedDrift.y, pointerDrift.y, 2.6, delta);
         camera.position.x = easedDrift.x * 0.5 + Math.sin(elapsed * 0.21) * 0.12;
