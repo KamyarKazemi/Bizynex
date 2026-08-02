@@ -95,6 +95,15 @@ export const selectIntroMode = (state: { capability: CapabilityState }) =>
 
 export const selectTheme = (state: { capability: CapabilityState }) => state.capability.theme;
 
+/**
+ * For components that hide or move something on a timer rather than merely
+ * animating it. CSS already flattens every transition globally (see index.css),
+ * so this is only needed where reduced motion has to change *behaviour* — a
+ * control that collapses out of reach is a different control, not a calmer one.
+ */
+export const selectReducedMotion = (state: { capability: CapabilityState }) =>
+  state.capability.prefersReducedMotion;
+
 /** Every condition in CLAUDE.md section 7 that must hold before WebGL mounts. */
 export const selectCanvasEnabled = (state: { capability: CapabilityState }) =>
   state.capability.hasPainted &&

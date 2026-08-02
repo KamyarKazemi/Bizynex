@@ -71,6 +71,55 @@ export const WOVEN_FIGURE: readonly Segment[] = [
   { a: [1.4, -4], b: [1.4, -2.6] },
 ];
 
+export type Segment3D = Segment & {
+  /**
+   * Which layer of the weave this sits on: -1 passes behind, +1 in front, 0 is
+   * the flat frame. Multiplied by the bar thickness, so the offset is always
+   * exactly enough to clear and never a number anyone has to tune.
+   */
+  readonly depth: -1 | 0 | 1;
+};
+
+/**
+ * The same figure, built to be looked at from an angle.
+ *
+ * The flat version fakes the weave: the north-west diagonal is *broken* at the
+ * centre so the other appears to pass over it. That trick only works head-on —
+ * rotate it even slightly and the gap reads as a gap. So here both diagonals run
+ * unbroken and are separated in depth instead, which is what the drawing was
+ * always describing. The weave stops being a drawing convention and becomes true.
+ *
+ * Same 8-unit grid, same right angles and 45s, same two teal segments at the
+ * same 1.4%. CONTEXT.md section 3 reuses the system, never the mark.
+ */
+export const WOVEN_FIGURE_3D: readonly Segment3D[] = [
+  // Four corner arms — the frame, flat at the centre plane.
+  { a: [-4, 4], b: [-1.4, 4], depth: 0 },
+  { a: [-4, 4], b: [-4, 1.4], depth: 0 },
+  { a: [4, 4], b: [1.4, 4], depth: 0 },
+  { a: [4, 4], b: [4, 1.4], depth: 0 },
+  { a: [-4, -4], b: [-1.4, -4], depth: 0 },
+  { a: [-4, -4], b: [-4, -1.4], depth: 0 },
+  { a: [4, -4], b: [1.4, -4], depth: 0 },
+  { a: [4, -4], b: [4, -1.4], depth: 0 },
+
+  // Unbroken now, and genuinely behind.
+  { a: [-4, 4], b: [4, -4], depth: -1 },
+
+  // Unbroken and genuinely in front, carrying the two teal segments.
+  { a: [-4, -4], b: [-2.1, -2.1], depth: 1 },
+  { a: [-2.1, -2.1], b: [-1.3, -1.3], accent: true, depth: 1 },
+  { a: [-1.3, -1.3], b: [1.3, 1.3], depth: 1 },
+  { a: [1.3, 1.3], b: [2.1, 2.1], accent: true, depth: 1 },
+  { a: [2.1, 2.1], b: [4, 4], depth: 1 },
+
+  // Inner counter-form: the small square the arms imply but never close.
+  { a: [-1.4, 4], b: [-1.4, 2.6], depth: 0 },
+  { a: [1.4, 4], b: [1.4, 2.6], depth: 0 },
+  { a: [-1.4, -4], b: [-1.4, -2.6], depth: 0 },
+  { a: [1.4, -4], b: [1.4, -2.6], depth: 0 },
+];
+
 /**
  * Deterministic pseudo-random in [0, 1). Seeded so the scattered state is
  * identical on every load and every device — the composition is designed, not

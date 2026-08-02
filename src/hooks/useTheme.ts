@@ -1,6 +1,7 @@
 import { useCallback, useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '../store';
 import { selectTheme, setTheme, type Theme } from '../store/capabilitySlice';
+import { withThemeWave, type WaveOrigin } from './themeWave';
 
 /** Also read by the inline boot script in index.html. Keep the two in step. */
 const STORAGE_KEY = 'bizynex:theme';
@@ -57,16 +58,29 @@ export const useTheme = () => {
     return () => query.removeEventListener('change', followSystem);
   }, [dispatch]);
 
-  const toggle = useCallback(() => {
-    const next: Theme = readFromDocument() === 'dark' ? 'light' : 'dark';
-    apply(next);
-    try {
-      window.localStorage.setItem(STORAGE_KEY, next);
-    } catch {
-      // Private mode. The choice holds for this page view and that is enough.
-    }
-    dispatch(setTheme(next));
-  }, [dispatch]);
+  /**
+   * `origin` is where on screen the change should appear to come from — the
+   * control that was pressed. Omitting it swaps the theme with no animation,
+   * which is also what happens on a browser or a reader that cannot take one.
+   */
+  const toggle = useCallback(
+    (origin?: WaveOrigin) => {
+      const next: Theme = readFromDocument() === 'dark' ? 'light' : 'dark';
+
+      // Everything the change consists of has to happen inside the callback:
+      // the wave is the browser diffing the page before and after it runs.
+      withThemeWave(() => {
+        apply(next);
+        try {
+          window.localStorage.setItem(STORAGE_KEY, next);
+        } catch {
+          // Private mode. The choice holds for this page view and that is enough.
+        }
+        dispatch(setTheme(next));
+      }, origin);
+    },
+    [dispatch],
+  );
 
   return { theme, toggle };
 };

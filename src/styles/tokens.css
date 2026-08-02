@@ -45,6 +45,26 @@
   --color-on-accent: #0a1a28; /* label on the accent fill — 5.47:1 */
   --color-selection: #e7f6f4;
 
+  /* ---- Semantic: the hero panel ---------------------------------------
+   * The panel is a lit room rather than a flat section, so it needs more
+   * than a background and a foreground: a wall, the rules drawn on it, the
+   * name standing behind, and the two lights in it. One token per surface,
+   * so src/three/HeroScene.tsx never reaches for a palette shade and both
+   * themes stay legible side by side here.
+   *
+   * The wall is the page background in both themes, so the panel has no edge
+   * of its own — the room simply opens out of the paper. What bounds it is the
+   * fog and the falloff of the key light, not a rectangle.
+   *
+   * The heading drawn inside the scene uses --color-ink like any other
+   * heading — 14.7:1 on the wall in light, 14.4:1 in dark.
+   */
+  --color-panel: #ffffff; /* the wall: clear colour and fog — matches paper */
+  --color-panel-rule: #2c5271; /* the sheet of rule lines on it */
+  --color-panel-name: #a9b8c4; /* the wordmark behind, catching the shadow */
+  --color-panel-ambient: #ffffff; /* bounce fill */
+  --color-panel-key: #ffffff; /* the key light */
+
   /* ---- Semantic: warning and error ------------------------------------ */
   --color-warning: #b45309;
   --color-error: #b42318;
@@ -109,6 +129,12 @@
 
       --color-accent-text: #4fd6c7;
       --color-selection: #1d3e58;
+
+      --color-panel: #0a1a28;
+      --color-panel-rule: #1d3e58;
+      --color-panel-name: #e4e9ee;
+      --color-panel-ambient: #1d3e58;
+      --color-panel-key: #e4e9ee;
     }
   }
 
@@ -123,5 +149,11 @@
 
     --color-accent-text: #4fd6c7;
     --color-selection: #1d3e58;
+
+    --color-panel: #0a1a28;
+    --color-panel-rule: #1d3e58;
+    --color-panel-name: #e4e9ee;
+    --color-panel-ambient: #1d3e58;
+    --color-panel-key: #e4e9ee;
   }
 }

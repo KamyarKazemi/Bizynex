@@ -3,6 +3,14 @@
  * Kept apart from fa.ts so that translatable copy and hard facts never mix.
  */
 
+/**
+ * The hero's anchor. It lives here rather than in Hero.tsx because the header
+ * needs it too, and importing it from the section would drag the three.js chunk
+ * into the header's module graph — which is the one thing that must never
+ * happen to the first thing on the page.
+ */
+export const HERO_ID = 'top';
+
 export const SECTION_IDS = {
   problem: 'problem',
   services: 'services',

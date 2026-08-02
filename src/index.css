@@ -43,6 +43,20 @@
   font-display: swap;
 }
 
+/**
+ * The wave's radius, registered so that it has a type.
+ *
+ * An ordinary custom property is a string as far as animation is concerned, and
+ * a string can only ever jump from one value to the next. Declaring it a length
+ * is what makes the theme wave a wave rather than a cut. Top level, not inside
+ * a layer, because `@property` is a registration rather than a rule.
+ */
+@property --theme-wave-r {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+
 @layer base {
   html {
     scroll-behavior: smooth;
@@ -105,6 +119,77 @@
     50% {
       opacity: 0;
     }
+  }
+
+  /* ---- The theme wave --------------------------------------------------
+   * Toggling the theme dissolves the old page away from the control that was
+   * pressed, uncovering the new one underneath. See src/hooks/themeWave.ts,
+   * which sets the custom properties below at the moment of the press and
+   * explains why the wave runs in this direction rather than the obvious one.
+   *
+   * The browser hands the two states over as layers: the old page as a still
+   * image, the new one live. Everything animated here is on the still image —
+   * one masked, composited quad whose visible area *shrinks* as the wave runs,
+   * so the last frames are the cheapest rather than the most expensive.
+   *
+   * The fallbacks degrade the effect to a plain centred dissolve rather than to
+   * nothing, in case the properties are ever missing.
+   */
+  /* How far the edge bleeds into the page. Named because it is needed twice —
+   * by the gradient that draws the edge, and by the keyframe that has to travel
+   * past it — and the two going out of step is not a visible mistake until the
+   * last frame. */
+  :root {
+    --theme-wave-feather: 96px;
+  }
+
+  @keyframes theme-wave {
+    to {
+      /* Past the far corner by the width of the feather, not up to it. Stopping
+         at the corner leaves that corner on the first stop of the gradient
+         below, so the new page never quite reaches full strength there. */
+      --theme-wave-r: calc(var(--theme-wave-radius, 150vmax) + var(--theme-wave-feather));
+    }
+  }
+
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    /* Both defaults exist to serve a cross-fade: a paired fade, blended so the
+       two layers can overlap without darkening. Neither is wanted here, and
+       the blend mode in particular would make the soft edge below glow. */
+    animation: none;
+    mix-blend-mode: normal;
+  }
+
+  ::view-transition-new(root) {
+    /* The new page is the layer that moves, and it grows over the old one.
+       Eating the old layer away instead is the cheaper way round and it is the
+       one that cannot be made to end cleanly: it leaves an opaque snapshot on
+       top of the live page for the whole transition, and the last thing that
+       happens is the browser deleting it. Whatever that snapshot still carries
+       on its final frame — a rounding of the feather, the handoff back to
+       ordinary painting — leaves in one step, which is a blink.
+
+       Growing this layer instead means the closing frames are already the live
+       page at full strength across the whole viewport, and the snapshot being
+       removed underneath it is completely covered. There is nothing left to
+       blink. The cost is a mask on a composited layer, which is the GPU's work
+       rather than a repaint. */
+    z-index: 1;
+    mask-image: radial-gradient(
+      circle at var(--theme-wave-x, 50%) var(--theme-wave-y, 50%),
+      #000 var(--theme-wave-r),
+      transparent calc(var(--theme-wave-r) + var(--theme-wave-feather))
+    );
+    /* Deliberately not the header capsule's curve. That one is 93% finished at
+       the halfway mark, which on a control reads as a confident arrival and on
+       a full-viewport wave reads as a stall. This one keeps moving.
+
+       `forwards` holds the mask open. Without it the radius drops back to its
+       registered initial value on the last frame and the new page closes to a
+       point — the same blink, in the other direction. */
+    animation: theme-wave var(--theme-wave-duration, 520ms) cubic-bezier(0.22, 0.61, 0.36, 1)
+      forwards;
   }
 
   ::selection {

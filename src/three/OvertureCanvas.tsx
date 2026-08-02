@@ -19,10 +19,10 @@ type OvertureCanvasProps = {
 /**
  * Mounts the opening room, and gets rid of it if it cannot be drawn.
  *
- * The difference between this and LatticeCanvas is what failure means. The
- * lattice is decoration beside the words, so a dead canvas just leaves the SVG
- * showing. This one is covering the entire site — if it breaks, the only
- * acceptable outcome is that the visitor is let through immediately.
+ * The difference between this and HeroCanvas is what failure means. The hero is
+ * decoration inside a panel, so a dead canvas just leaves the SVG showing. This
+ * one is covering the entire site — if it breaks, the only acceptable outcome is
+ * that the visitor is let through immediately.
  */
 export const OvertureCanvas = ({
   phase,
