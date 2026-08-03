@@ -16,7 +16,6 @@ export const SECTION_IDS = {
   services: 'services',
   process: 'process',
   why: 'why',
-  team: 'team',
   contact: 'contact',
 } as const;
 
@@ -29,8 +28,7 @@ export const SECTION_INDEX = {
   services: '۰۲',
   process: '۰۳',
   why: '۰۴',
-  team: '۰۵',
-  contact: '۰۶',
+  contact: '۰۵',
 } as const;
 
 export const site = {
@@ -42,14 +40,11 @@ export const site = {
 export const mailtoHref = `mailto:${site.email}`;
 
 /**
- * Four nav items for seven sections — the nav is a shortcut, not a table of
- * contents. "درباره ما" points at the team section: it is literally who "ما"
- * is, and it sits directly after "چرا بیزینکس", so a visitor who wanted the
- * commitments has just scrolled past them.
+ * Three nav items for six sections — the nav is a shortcut, not a table of
+ * contents.
  */
 export const NAV_LINKS = [
   { key: 'services', href: `#${SECTION_IDS.services}` },
   { key: 'process', href: `#${SECTION_IDS.process}` },
-  { key: 'about', href: `#${SECTION_IDS.team}` },
   { key: 'contact', href: `#${SECTION_IDS.contact}` },
 ] as const;

@@ -10,7 +10,6 @@ import { Overture } from './sections/Overture';
 import { Problem } from './sections/Problem';
 import { Process } from './sections/Process';
 import { Services } from './sections/Services';
-import { Team } from './sections/Team';
 import { Why } from './sections/Why';
 
 const App = () => {
@@ -44,7 +43,6 @@ const App = () => {
         <Services />
         <Process />
         <Why />
-        <Team />
         <Contact />
       </main>
 

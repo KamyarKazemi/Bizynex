@@ -9,7 +9,7 @@ import { SECTION_IDS, SECTION_INDEX, mailtoHref, site } from '../content/site';
  * have done any, and an inbox is something three founders can actually answer.
  */
 export const Contact = () => (
-  <Section id={SECTION_IDS.contact}>
+  <Section id={SECTION_IDS.contact} surface>
     <SectionHeader index={SECTION_INDEX.contact} title={fa.contact.title} />
 
     <p className="max-w-measure text-lead text-ink">{fa.contact.body}</p>
