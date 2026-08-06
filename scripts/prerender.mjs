@@ -14,20 +14,32 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const distDir = join(root, 'dist');
 const serverDir = join(distDir, 'server');
 
-const { render } = await import(pathToFileURL(join(serverDir, 'entry-server.js')).href);
+const { render, jsonLdScript } = await import(
+  pathToFileURL(join(serverDir, 'entry-server.js')).href
+);
 
 const template = await readFile(join(distDir, 'index.html'), 'utf8');
-const placeholder = '<div id="root"></div>';
 
-if (!template.includes(placeholder)) {
-  throw new Error('prerender: could not find the root element in dist/index.html');
+/**
+ * Two substitutions, both of which must land. A silent miss here ships a page
+ * with no content or no structured data and nothing would notice until a
+ * crawler did, so each one throws rather than warns.
+ */
+const substitutions = [
+  ['<div id="root"></div>', () => `<div id="root">${render()}</div>`],
+  ['<!--seo-jsonld-->', () => jsonLdScript],
+];
+
+let html = template;
+
+for (const [placeholder, build] of substitutions) {
+  if (!html.includes(placeholder)) {
+    throw new Error(`prerender: could not find ${placeholder} in dist/index.html`);
+  }
+  html = html.replace(placeholder, build);
 }
 
-await writeFile(
-  join(distDir, 'index.html'),
-  template.replace(placeholder, `<div id="root">${render()}</div>`),
-  'utf8',
-);
+await writeFile(join(distDir, 'index.html'), html, 'utf8');
 
 await rm(serverDir, { recursive: true, force: true });
 

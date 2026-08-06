@@ -3,11 +3,48 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>بیزینکس — سیستم‌هایی که واقعاً کار می‌کنند</title>
+    <!--
+      SEO head.
+
+      Everything below is static because it is static: one page, one canonical
+      URL, one description. The one thing that is *not* written here by hand is
+      the JSON-LD — see the placeholder further down and src/content/jsonLd.ts.
+
+      The origin appears in several places here and once more in
+      src/content/site.ts and public/sitemap.xml. If the domain changes, change
+      all three.
+
+      Title is kept under ~60 characters so Google does not truncate it, and it
+      leads with what people search for rather than with the brand name, which
+      nobody is searching for yet.
+    -->
+    <title>طراحی سایت، اپلیکیشن و اتوماسیون در شیراز | بیزینکس</title>
     <meta
       name="description"
-      content="بیزینکس وب‌سایت، اپلیکیشن و اتوماسیون می‌سازد؛ با برنامه‌ریزی روشن، ارتباط پیوسته و پشتیبانی بلندمدت."
+      content="ما یک تیم کوچک در شیرازیم و برای کسب‌وکارها وب‌سایت، اپلیکیشن و اتوماسیون می‌سازیم. پیش از شروع می‌نویسیم قرار است چه چیزی ساخته شود، در طول کار خبرتان می‌کنیم، و بعد از تحویل هم می‌مانیم."
     />
+    <link rel="canonical" href="https://bizynex.ir/" />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
+
+    <!-- Country and city, for the engines that still read these. Cheap, and the
+         same facts are in the JSON-LD PostalAddress where they carry more. -->
+    <meta name="geo.region" content="IR-07" />
+    <meta name="geo.placename" content="Shiraz" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="بیزینکس" />
+    <meta property="og:locale" content="fa_IR" />
+    <meta property="og:url" content="https://bizynex.ir/" />
+    <meta property="og:title" content="طراحی سایت، اپلیکیشن و اتوماسیون در شیراز | بیزینکس" />
+    <meta
+      property="og:description"
+      content="یک تیم کوچک در شیراز. وب‌سایت، اپلیکیشن و اتوماسیون می‌سازیم — و از اولین گفتگو تا سال‌ها بعد از تحویل، همان آدم‌هایی هستیم که جواب می‌دهیم."
+    />
+    <!-- TODO before launch: a real 1200×630 share image. This is the stacked
+         logo, which is correct but small, so previews will letterbox it. -->
+    <meta property="og:image" content="https://bizynex.ir/brand/bizynex-stacked.png" />
+    <meta name="twitter:card" content="summary" />
+
     <meta name="theme-color" content="#FFFFFF" />
     <link rel="icon" type="image/svg+xml" href="/brand/favicon.svg" />
 
@@ -103,6 +140,16 @@
         overflow: hidden;
       }
     </style>
+
+    <!--
+      Replaced at build time by scripts/prerender.mjs with structured data
+      generated from src/content/fa.ts. Left as a comment in the source so that
+      the FAQ answers Google reads and the FAQ answers a visitor reads are
+      literally the same strings and cannot drift apart.
+
+      `npm run dev` leaves it as a comment. That is fine — nothing crawls dev.
+    -->
+    <!--seo-jsonld-->
 
     <!-- Only the body weight is preloaded. SemiBold is used for headings and
          can arrive a beat later without shifting the reading experience. -->

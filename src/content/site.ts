@@ -16,6 +16,7 @@ export const SECTION_IDS = {
   services: 'services',
   process: 'process',
   why: 'why',
+  faq: 'faq',
   contact: 'contact',
 } as const;
 
@@ -28,19 +29,45 @@ export const SECTION_INDEX = {
   services: '۰۲',
   process: '۰۳',
   why: '۰۴',
-  contact: '۰۵',
+  faq: '۰۵',
+  contact: '۰۶',
 } as const;
 
 export const site = {
-  email: 'kamiyarkazemii@gmail.com',
+  /**
+   * Canonical origin. No trailing slash — every URL built from it adds its own.
+   * Used by the sitemap, the JSON-LD @id, and the og:url in index.html; if this
+   * changes, public/sitemap.xml and index.html change with it.
+   */
+  url: 'https://bizynex.ir',
+
+  email: 'info@bizynex.ir',
+
+  /**
+   * Where we are. Not decoration: this is the single strongest ranking signal
+   * available to a services business, and it is carried in the copy, in the
+   * JSON-LD, and in the geo meta tags in index.html.
+   */
+  city: 'شیراز',
+  cityEn: 'Shiraz',
+  region: 'استان فارس',
+  countryCode: 'IR',
+
   /** Gregorian. Switch to the Jalali year if that is the house convention. */
   year: '۲۰۲۶',
+
+  /**
+   * The Telegram bot, once it exists. Null until then, and the contact section
+   * renders nothing for it — a dead link to a bot that does not answer costs
+   * more trust than a missing channel does.
+   */
+  telegram: null as string | null,
 } as const;
 
 export const mailtoHref = `mailto:${site.email}`;
 
 /**
- * Three nav items for six sections — the nav is a shortcut, not a table of
+ * Three nav items for seven sections — the nav is a shortcut, not a table of
  * contents.
  */
 export const NAV_LINKS = [

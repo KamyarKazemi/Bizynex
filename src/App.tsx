@@ -2,6 +2,7 @@ import { fa } from './content/fa';
 import { useCapabilityDetection } from './hooks/useCapabilityDetection';
 import { useIntroGate } from './hooks/useIntroGate';
 import { Contact } from './sections/Contact';
+import { Faq } from './sections/Faq';
 import { Footer } from './sections/Footer';
 import { Header } from './sections/Header';
 import { Hero } from './sections/Hero';
@@ -43,6 +44,7 @@ const App = () => {
         <Services />
         <Process />
         <Why />
+        <Faq />
         <Contact />
       </main>
 

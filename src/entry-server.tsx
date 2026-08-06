@@ -17,3 +17,10 @@ export const render = () =>
       <App />
     </Provider>,
   );
+
+/**
+ * Re-exported so the prerender script has a single module to import. It is
+ * generated from fa.ts — see src/content/jsonLd.ts for why it is built here
+ * rather than written into index.html by hand.
+ */
+export { jsonLdScript } from './content/jsonLd';
