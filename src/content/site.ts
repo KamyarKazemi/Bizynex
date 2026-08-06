@@ -44,6 +44,50 @@ export const site = {
   email: 'info@bizynex.ir',
 
   /**
+   * ⚠ FILL THIS IN BEFORE LAUNCH.
+   *
+   * In E.164, because that is the only format every consumer of it agrees on:
+   * `+989xxxxxxxxx`. Null until it is real — a number in the structured data
+   * that rings nowhere is worse than no number, and Google will surface it.
+   *
+   * When it is set, it appears in three places at once: the ContactPoint in the
+   * structured data, and — because a phone number is a conversion device before
+   * it is an SEO one — a visible `tel:` link in the contact section. Add the
+   * label to fa.ui when you do.
+   */
+  phone: null as string | null,
+
+  /**
+   * ⚠ FILL THESE IN BEFORE LAUNCH.
+   *
+   * Profile URLs, one per line, full https URLs and nothing else. This becomes
+   * `sameAs` in the structured data, and it is the single strongest signal
+   * available for saying "the بیزینکس on this page and the بیزینکس on that
+   * Instagram are one company" — which is what has to be true before Google
+   * will treat us as an entity rather than as a string.
+   *
+   * Order does not matter. Only add profiles that are actually maintained: a
+   * linked account with four posts from last year argues against us.
+   *
+   * Examples of what belongs here:
+   *   'https://www.instagram.com/bizynex'
+   *   'https://www.linkedin.com/company/bizynex'
+   *   'https://github.com/bizynex'
+   *   'https://t.me/bizynex'
+   */
+  socialProfiles: [] as string[],
+
+  /**
+   * The Google Business Profile URL, once the profile is verified. Also goes
+   * into `sameAs`, and it is the one entry there that does local ranking work
+   * rather than only entity work.
+   */
+  googleBusinessProfile: null as string | null,
+
+  /** When the three of us started. Used for `foundingDate`. ISO, year is enough. */
+  foundingYear: '2026',
+
+  /**
    * Where we are. Not decoration: this is the single strongest ranking signal
    * available to a services business, and it is carried in the copy, in the
    * JSON-LD, and in the geo meta tags in index.html.

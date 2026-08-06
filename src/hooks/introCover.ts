@@ -11,14 +11,37 @@
  * means fading out over the page, absent means gone.
  */
 
+declare global {
+  interface Window {
+    /** Set by the inline script in index.html. See `disarmSafetyTimeout` below. */
+    __bizynexCoverTimeout?: ReturnType<typeof setTimeout>;
+  }
+}
+
 /** Fade the cover out over the page. Must match the transition in index.html. */
 export const COVER_LIFT_MS = 500;
+
+/**
+ * The inline script in index.html arms a timer that pulls the cover off on its
+ * own if this module never loads. Once we are here it has loaded, so the timer
+ * has done its job by not being needed and is disarmed on the first ordinary
+ * exit — otherwise it would fire mid-animation on any opening that runs past
+ * eight seconds and yank the panel away under the reader.
+ */
+const disarmSafetyTimeout = () => {
+  const timeout = window.__bizynexCoverTimeout;
+  if (timeout !== undefined) {
+    clearTimeout(timeout);
+    delete window.__bizynexCoverTimeout;
+  }
+};
 
 /**
  * Start revealing the page underneath. Used when the opening is playing its own
  * exit, so the two fade together instead of the cover flashing in between.
  */
 export const liftCover = () => {
+  disarmSafetyTimeout();
   if (document.documentElement.dataset.intro) {
     document.documentElement.dataset.intro = 'lifting';
   }
@@ -26,6 +49,7 @@ export const liftCover = () => {
 
 /** Take it off outright. Used whenever the opening ends without an exit. */
 export const removeCover = () => {
+  disarmSafetyTimeout();
   delete document.documentElement.dataset.intro;
 };
 

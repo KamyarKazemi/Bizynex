@@ -7,7 +7,7 @@ import {
   selectIntroPlaying,
   type IntroMode,
 } from '../store/capabilitySlice';
-import { isLowMemory, prefersReducedMotion, supportsWebgl } from './deviceSupport';
+import { isAutomatedVisit, isLowMemory, prefersReducedMotion, supportsWebgl } from './deviceSupport';
 import { removeCover } from './introCover';
 
 const SESSION_KEY = 'bizynex:intro-shown';
@@ -59,6 +59,11 @@ const rememberSeen = () => {
  * works without it.
  */
 const decide = (): IntroMode | null => {
+  // Cheapest and most absolute: a crawler renders the page once and does not
+  // wait, so an opening it has to sit through is measured as the page. The
+  // inline script in index.html already skipped the cover for the same visit;
+  // this is the half of the decision that lives in React.
+  if (isAutomatedVisit()) return null;
   if (prefersReducedMotion()) return null;
   if (hasSeenThisSession()) return null;
 

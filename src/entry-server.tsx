@@ -1,6 +1,7 @@
 import { renderToString } from 'react-dom/server';
 import { Provider } from 'react-redux';
 import App from './App';
+import { site } from './content/site';
 import { store } from './store';
 
 /**
@@ -24,3 +25,10 @@ export const render = () =>
  * rather than written into index.html by hand.
  */
 export { jsonLdScript } from './content/jsonLd';
+
+/**
+ * The canonical origin, re-exported for the same reason: the prerender step
+ * writes the sitemap, and the sitemap's URL and the page's `@id` have to come
+ * from one place or they will disagree the first time the domain changes.
+ */
+export const siteUrl = site.url;
