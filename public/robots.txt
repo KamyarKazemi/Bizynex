@@ -4,4 +4,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://bizynex.ir/sitemap.xml
+Sitemap: https://bizynex.vercel.app/sitemap.xml
