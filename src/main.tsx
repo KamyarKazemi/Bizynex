@@ -1,9 +1,13 @@
 import { StrictMode } from 'react';
 import { createRoot, hydrateRoot } from 'react-dom/client';
 import { Provider } from 'react-redux';
+import { injectSpeedInsights } from '@vercel/speed-insights';
 import './index.css';
 import App from './App.tsx';
 import { store } from './store';
+
+// Initialize Vercel Speed Insights
+injectSpeedInsights();
 
 const container = document.getElementById('root')!;
 
