@@ -1,10 +1,12 @@
 import { fa } from '../content/fa';
 
 type LogoProps = {
-  variant: 'stacked' | 'horizontal';
+  /**
+   * One member today. Kept as a union because the stacked master still exists in
+   * brand/ and is still built — this is the seam it comes back through.
+   */
+  variant: 'horizontal';
   className?: string;
-  /** True only for the hero mark, which is above the fold on every screen. */
-  priority?: boolean;
 };
 
 /**
@@ -13,17 +15,17 @@ type LogoProps = {
  * both the light files and the dark ones, in which the navy is repainted to the
  * dark theme's ink and the two teal segments are left alone.
  *
- * Both variants are in the markup, with CSS choosing between them. Swapping the
+ * Both the light and the dark file are in the markup, with CSS choosing between
+ * them — `variant` above is a separate axis. Swapping the
  * `src` from JavaScript instead would cost nothing in bytes but would show a
  * navy mark on a navy page until hydration caught up — up to a second on the
  * connections CONTEXT.md section 8 tells us to assume.
  */
 const SOURCES = {
-  stacked: { file: 'bizynex-stacked', width: 384, height: 331 },
   horizontal: { file: 'bizynex-horizontal', width: 448, height: 102 },
 } as const;
 
-export const Logo = ({ variant, className, priority = false }: LogoProps) => {
+export const Logo = ({ variant, className }: LogoProps) => {
   const source = SOURCES[variant];
   const shared = {
     width: source.width,
@@ -31,8 +33,9 @@ export const Logo = ({ variant, className, priority = false }: LogoProps) => {
     // The wrapper carries the accessible name, so the images themselves are
     // decorative — otherwise assistive technology announces the mark twice.
     alt: '',
-    loading: priority ? ('eager' as const) : ('lazy' as const),
-    decoding: priority ? ('sync' as const) : ('async' as const),
+    // The only mark on the page is in the footer, which is never above the fold.
+    loading: 'lazy' as const,
+    decoding: 'async' as const,
   };
 
   return (

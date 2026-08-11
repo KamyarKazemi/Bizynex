@@ -106,9 +106,10 @@ export const createCopyPlate = (
   let ratio = 4;
   let currentInk = ink;
   let width = MAX_WIDTH;
+  let disposed = false;
 
   const paint = () => {
-    if (!context) return;
+    if (disposed || !context) return;
 
     // Honours the reader's own font size. Someone who has set their browser to
     // 24px gets larger type here too, which is the one accessibility guarantee
@@ -183,6 +184,12 @@ export const createCopyPlate = (
       width = clamped;
       paint();
     },
-    dispose: () => texture.dispose(),
+    // The font-ready redraw above is fire-and-forget and can land long after the
+    // hero has gone. Left unguarded it repaints a disposed texture and calls
+    // `onRedraw` back into a scene whose uniforms and React tree are both gone.
+    dispose: () => {
+      disposed = true;
+      texture.dispose();
+    },
   };
 };

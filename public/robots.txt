@@ -1,4 +1,4 @@
-# bizynex.ir
+# bizynex.vercel.app
 # One page, nothing private. Everything is crawlable.
 
 User-agent: *

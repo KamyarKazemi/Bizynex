@@ -10,7 +10,8 @@ import { useEffect, useState } from 'react';
  * they had arrived at it.
  *
  * The last answer is kept when nothing is in the band, which happens in the hero
- * above the first section and while passing a section the nav does not link to.
+ * above the first observed section, and in the stretches between observed ones —
+ * the caller passes only the hero and the nav targets, not every section.
  * Holding the previous value means the readout never blinks empty, and "the last
  * place you passed" is the honest answer to where you are.
  *
@@ -29,9 +30,18 @@ export const useActiveSection = (ids: readonly string[]) => {
 
     const observer = new IntersectionObserver(
       (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) setActiveId(entry.target.id);
-        });
+        // Pick by geometry, not by position in the batch. The band is only 5% of
+        // the viewport tall, so a fast scroll or a smooth-scroll anchor jump can
+        // put two section boundaries in one callback — and entry order within a
+        // batch is not specified to be document order, so taking the last one
+        // would settle the pill on whichever the browser happened to list last.
+        const visible = entries.filter((entry) => entry.isIntersecting);
+        if (visible.length === 0) return;
+
+        const topmost = visible.reduce((best, entry) =>
+          entry.boundingClientRect.top < best.boundingClientRect.top ? entry : best,
+        );
+        setActiveId(topmost.target.id);
       },
       { rootMargin: '-25% 0px -70% 0px' },
     );

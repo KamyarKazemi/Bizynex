@@ -46,6 +46,8 @@ export const HeroCanvas = ({ targetId, className, onCopyDrawn }: HeroCanvasProps
   const handleSceneCopy = useCallback((drawing: boolean) => setSceneHasCopy(drawing), []);
 
   // Restores the static figure to full opacity if the scene dies mid-flight.
+  // Two things reach this: a thrown error, via the boundary, and the GL context
+  // being lost, which throws nothing and so is reported by the scene itself.
   const handleError = useCallback(() => {
     setFailed(true);
     setHasPaintedFrame(false);
@@ -107,6 +109,7 @@ export const HeroCanvas = ({ targetId, className, onCopyDrawn }: HeroCanvasProps
                 active={isActive}
                 onReady={handleReady}
                 onCopyDrawn={handleSceneCopy}
+                onFailed={handleError}
               />
             </div>
           </Suspense>

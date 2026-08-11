@@ -4,7 +4,7 @@ import { fa } from '../content/fa';
 import { SECTION_IDS, SECTION_INDEX } from '../content/site';
 
 /**
- * Seven questions, all of them open.
+ * Four questions, all of them open.
  *
  * No accordion. An accordion here would cost keyboard handling, ARIA state and
  * a hydration boundary, and it would buy nothing: the answers are short, the

@@ -36,11 +36,16 @@ const escapeForScriptTag = (json: string) => json.replace(/</g, '\\u003c');
  * about. The Business Profile is listed first because it is the entry that
  * does local ranking work rather than only disambiguation.
  *
- * Empty by design until src/content/site.ts is filled in. An empty array is
- * dropped below rather than emitted, because `"sameAs": []` is a claim to have
- * checked and found nothing.
+ * The Telegram handle is in here because it is the one profile that actually
+ * exists today. It was being used for the contact button and nowhere else,
+ * which meant the single provable identity this company has was missing from
+ * the one property that reads it.
+ *
+ * Still thin until the rest of src/content/site.ts is filled in. Whatever is
+ * unset drops out rather than being emitted, because `"sameAs": []` is a claim
+ * to have checked and found nothing.
  */
-const sameAs = [site.googleBusinessProfile, ...site.socialProfiles].filter(
+const sameAs = [site.googleBusinessProfile, site.telegram, ...site.socialProfiles].filter(
   (url): url is string => typeof url === 'string' && url.length > 0,
 );
 
@@ -113,29 +118,44 @@ const graph = [
         itemOffered: {
           '@type': 'Service',
           '@id': `${site.url}/#service-${index + 1}`,
-          name: item.deliverable,
+          name: item.title,
           description: item.body,
-          serviceType: item.title,
           areaServed: { '@type': 'City', name: site.city },
           provider: { '@id': ORGANISATION_ID },
         },
       })),
     },
-    contactPoint: withoutBlanks({
-      '@type': 'ContactPoint',
-      contactType: 'sales',
-      email: site.email,
-      telephone: site.phone,
-      availableLanguage: ['fa', 'en'],
-      areaServed: site.countryCode,
-    }),
-    /* Three founders, stated plainly. CONTEXT.md §7 turns the smallest thing
-       about us into the reason to choose us, and the FAQ already says it out
-       loud — so the markup should not be vaguer than the page. */
-    numberOfEmployees: {
-      '@type': 'QuantitativeValue',
-      value: 3,
-    },
+    /* Two ways in, and the order is the order the page offers them. The bot is
+       the primary intake — «هزینه و زمان» is written around it and تماس renders
+       it as the single action — so it is listed first. Email is the quiet
+       alternative underneath, and it is a real address rather than a form.
+
+       Both are ContactPoints rather than one with two fields, because they are
+       answered differently: the bot qualifies and estimates, a person reads the
+       email. `url` is the right property for a chat handle; there is no
+       schema.org property for "Telegram" specifically, and inventing one would
+       be worse than describing it plainly. */
+    contactPoint: [
+      withoutBlanks({
+        '@type': 'ContactPoint',
+        contactType: 'sales',
+        url: site.telegram,
+        availableLanguage: ['fa'],
+        areaServed: site.countryCode,
+      }),
+      withoutBlanks({
+        '@type': 'ContactPoint',
+        contactType: 'customer support',
+        email: site.email,
+        telephone: site.phone,
+        availableLanguage: ['fa', 'en'],
+        areaServed: site.countryCode,
+      }),
+    ].filter((point) => Object.keys(point).length > 2),
+    /* No `numberOfEmployees`, and no `founder`. The site states no headcount
+       anywhere, by decision — and structured data is not a back door for a fact
+       we chose not to put on the page. It is read by more parties than the page
+       is, not fewer. */
   }),
 
   {
@@ -182,17 +202,136 @@ const graph = [
       name: fa[key as keyof typeof SECTION_IDS].title,
       url: `${site.url}/#${id}`,
     })),
-    mainEntity: fa.faq.items.map((item) => ({
-      '@type': 'Question',
-      name: item.q,
-      /* Anchors the answer to where it actually is on the page. */
-      url: `${site.url}/#${SECTION_IDS.faq}`,
-      acceptedAnswer: { '@type': 'Answer', text: item.a },
-    })),
+    mainEntity: [
+      ...fa.faq.items.map((item) => ({
+        '@type': 'Question',
+        name: item.q,
+        /* Anchors the answer to where it actually is on the page. */
+        url: `${site.url}/#${SECTION_IDS.faq}`,
+        acceptedAnswer: { '@type': 'Answer', text: item.a },
+      })),
+
+      /* The two questions the FAQ section no longer asks out loud.
+       *
+       * Moving price and timeline into «هزینه و زمان» was right for a reader —
+       * they are not really questions, they are the two things everyone wants
+       * to know, and burying them at FAQ position five was hiding them. But
+       * FAQPage markup is what makes an answer eligible to be shown *as* an
+       * answer in search, and «هزینهٔ طراحی سایت در شیراز چقدر است؟» is the
+       * highest-intent local query this business can answer. Dropping the
+       * markup meant the answers stayed on the page while the page stopped
+       * saying they were answers.
+       *
+       * So the pairing lives here and only here: the section renders prose,
+       * the graph declares it as Q&A. Nothing new is claimed — every answer
+       * string below is rendered verbatim in the pricing section, which is
+       * what keeps this honest markup rather than a keyword play.
+       *
+       * `url` points at the pricing section, not the FAQ, because that is
+       * where a visitor arriving on this answer should land. */
+      {
+        '@type': 'Question',
+        name: fa.pricing.schemaOnlyQuestions.cost,
+        url: `${site.url}/#${SECTION_IDS.pricing}`,
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: `${fa.pricing.money} ${fa.pricing.drivers}`,
+        },
+      },
+      {
+        '@type': 'Question',
+        name: fa.pricing.schemaOnlyQuestions.time,
+        url: `${site.url}/#${SECTION_IDS.pricing}`,
+        acceptedAnswer: { '@type': 'Answer', text: fa.pricing.time },
+      },
+    ],
   },
 ];
 
+const wrap = (nodes: unknown[]) =>
+  `<script type="application/ld+json">${escapeForScriptTag(
+    JSON.stringify({ '@context': 'https://schema.org', '@graph': nodes }),
+  )}</script>`;
+
 /** The full `<script type="application/ld+json">` element, ready to paste. */
-export const jsonLdScript = `<script type="application/ld+json">${escapeForScriptTag(
-  JSON.stringify({ '@context': 'https://schema.org', '@graph': graph }),
-)}</script>`;
+export const jsonLdScript = wrap(graph);
+
+/**
+ * The graph for a service page.
+ *
+ * Organization and WebSite are emitted again rather than linked to from afar,
+ * because a crawler reads one page at a time and a bare `@id` pointing at a
+ * node it has not fetched resolves to nothing. They are byte-identical to the
+ * home copies and carry the same `@id`, which is exactly how a crawler knows
+ * the two pages are describing one company rather than two.
+ *
+ * The page's own nodes are new: a `WebPage` for itself, a `Service` for what it
+ * sells, and a breadcrumb.
+ *
+ * ## The breadcrumb reverses an earlier decision, deliberately
+ *
+ * A previous audit rejected `BreadcrumbList` on the grounds that "a breadcrumb
+ * of length one is noise", and that was correct — the site was one page, and a
+ * trail from home to home says nothing. That reasoning expired the moment real
+ * sub-pages existed: the trail is now home → this page, which is the two-level
+ * hierarchy Google renders in place of a bare URL. Recorded here so nobody
+ * re-litigates it from the old note.
+ */
+export const jsonLdScriptForPage = (page: {
+  key: string;
+  url: string;
+  name: string;
+  description: string;
+}) => {
+  const pageId = `${page.url}#webpage`;
+
+  return wrap([
+    ...graph.filter((node) => {
+      const type = ([] as string[]).concat(node['@type'] as string | string[]);
+      /* Home's WebPage/FAQPage describes home. Everything else — the company
+         and the site — is true on every page. */
+      return !type.includes('WebPage');
+    }),
+
+    {
+      '@type': 'WebPage',
+      '@id': pageId,
+      url: page.url,
+      name: page.name,
+      description: page.description,
+      inLanguage: 'fa-IR',
+      isPartOf: { '@id': WEBSITE_ID },
+      about: { '@id': ORGANISATION_ID },
+      primaryImageOfPage: {
+        '@type': 'ImageObject',
+        url: `${site.url}/brand/og-cover.png`,
+        width: 1200,
+        height: 630,
+      },
+      breadcrumb: { '@id': `${page.url}#breadcrumb` },
+    },
+
+    {
+      '@type': 'Service',
+      '@id': `${page.url}#service`,
+      name: page.name,
+      description: page.description,
+      serviceType: page.name,
+      provider: { '@id': ORGANISATION_ID },
+      areaServed: { '@type': 'City', name: site.city },
+      inLanguage: 'fa-IR',
+      url: page.url,
+    },
+
+    {
+      '@type': 'BreadcrumbList',
+      '@id': `${page.url}#breadcrumb`,
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: fa.hero.title, item: `${site.url}/` },
+        /* No `item` on the last crumb. Google's own guidance is that the
+           current page is the end of the trail and does not link to itself. */
+        { '@type': 'ListItem', position: 2, name: page.name },
+      ],
+    },
+  ]);
+};

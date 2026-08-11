@@ -65,6 +65,36 @@
   --color-panel-ambient: #ffffff; /* bounce fill */
   --color-panel-key: #ffffff; /* the key light */
 
+  /* ---- Semantic: the opening rooms ------------------------------------
+   * Intro and Overture are always dark, in both themes, on purpose: they are
+   * a lit room you walk out of, not a section of the page. A visitor in light
+   * mode still sees a dark room. So unlike every other semantic token, these
+   * are NOT overridden below — the same values are repeated in both dark
+   * blocks so that the intent is written down rather than inferred from an
+   * absence.
+   *
+   * They exist so the two opening components can stay off the palette layer
+   * like everything else. Every pair was measured against --color-opening:
+   *
+   *   opening-ink     14.43:1      opening-accent   9.88:1
+   *   opening-muted    5.97:1
+   *
+   * opening-muted is the one that carries body-sized text (the skip control,
+   * which is the visitor's only deliberate way out), so it has to clear 4.5:1
+   * on its own — it is not decoration.
+   */
+  --color-opening: #0a1a28; /* the ground: the room's darkness */
+  --color-opening-ink: #e4e9ee; /* primary text in the room — 14.43:1 */
+  --color-opening-muted: #8798ab; /* secondary text and underlines — 5.97:1 */
+  --color-opening-accent: #4fd6c7; /* the one teal mark: hover, countdown — 9.88:1 */
+
+  /* Decoration only, never text that has to be read: the ghost wordmark shown
+   * before the scene loads and the unfilled part of the countdown ring. 1.58:1
+   * on the ground, which is the intended look — both are aria-hidden or
+   * duplicated by a real label, and the ghost matches the pre-paint cover in
+   * index.html so the handover is invisible. */
+  --color-opening-faint: #1d3e58;
+
   /* ---- Semantic: warning and error ------------------------------------ */
   --color-warning: #b45309;
   --color-error: #b42318;
@@ -135,6 +165,13 @@
       --color-panel-name: #e4e9ee;
       --color-panel-ambient: #1d3e58;
       --color-panel-key: #e4e9ee;
+
+      /* Repeated, not flipped. The opening rooms are dark in both themes. */
+      --color-opening: #0a1a28;
+      --color-opening-ink: #e4e9ee;
+      --color-opening-muted: #8798ab;
+      --color-opening-accent: #4fd6c7;
+      --color-opening-faint: #1d3e58;
     }
   }
 
@@ -155,5 +192,12 @@
     --color-panel-name: #e4e9ee;
     --color-panel-ambient: #1d3e58;
     --color-panel-key: #e4e9ee;
+
+    /* Repeated, not flipped. The opening rooms are dark in both themes. */
+    --color-opening: #0a1a28;
+    --color-opening-ink: #e4e9ee;
+    --color-opening-muted: #8798ab;
+    --color-opening-accent: #4fd6c7;
+    --color-opening-faint: #1d3e58;
   }
 }

@@ -15,7 +15,21 @@ export const Contact = () => (
     <p className="max-w-measure text-lead text-ink">{fa.contact.body}</p>
 
     <div className="mt-10 flex flex-wrap items-center gap-x-8 gap-y-4">
-      <Action href={mailtoHref}>{fa.contact.cta}</Action>
+      {/* The only button on the page.
+
+          Telegram when it exists, email when it does not — one or the other,
+          never both. Two buttons side by side ask the reader to choose a
+          channel at the exact moment they have decided to get in touch, which
+          is the worst possible moment to hand them a decision. The address
+          below stays either way: it is a link, not a button, and a visible
+          address is checkable in a way a `mailto:` is not. */}
+      {site.telegram ? (
+        <Action href={site.telegram} external>
+          {fa.contact.botCta}
+        </Action>
+      ) : (
+        <Action href={mailtoHref}>{fa.contact.cta}</Action>
+      )}
 
       {/* Shown as well as linked: a visible address is checkable, and a mailto
           that opens nothing is a dead end on a shared machine. */}

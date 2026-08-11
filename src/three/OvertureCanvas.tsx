@@ -31,7 +31,11 @@ export const OvertureCanvas = ({
   onReady,
   onFailed,
 }: OvertureCanvasProps) => {
-  const [isTabVisible, setIsTabVisible] = useState(true);
+  // Read rather than assumed. A page opened in a background tab would otherwise
+  // start by telling the scene to run. Safe to touch document here because the
+  // opening is decided in an effect and so never server-renders — see
+  // useIntroGate.
+  const [isTabVisible, setIsTabVisible] = useState(() => !document.hidden);
 
   useEffect(() => {
     const sync = () => setIsTabVisible(!document.hidden);
@@ -48,6 +52,7 @@ export const OvertureCanvas = ({
           audio={audio}
           onPulled={onPulled}
           onReady={onReady}
+          onFailed={onFailed}
         />
       </Suspense>
     </ErrorBoundary>

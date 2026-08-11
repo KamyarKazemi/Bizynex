@@ -4,7 +4,7 @@ import { ServiceIcon, type ServiceIconName } from '../components/ServiceIcon';
 import { fa } from '../content/fa';
 import { SECTION_IDS, SECTION_INDEX } from '../content/site';
 
-/** Parallel to fa.services.items — outcome first, deliverable second. */
+/** Positional, parallel to fa.services.items. Reorder one and reorder both. */
 const ICONS: readonly ServiceIconName[] = ['credibility', 'capability', 'efficiency', 'endurance'];
 
 export const Services = () => (
@@ -17,8 +17,12 @@ export const Services = () => (
           {/* Navy, not teal. Four teal icons in one viewport would spend the
               whole accent budget on decoration. */}
           <ServiceIcon name={ICONS[index]} className="text-ink-soft" />
+          {/* The heading is the deliverable — the thing someone would type into
+              a search box. The outcome it buys is inside the sentence below,
+              where there is room to make it mean something. The previous draft
+              had these inverted, so the only place a service was named was a
+              muted line styled as the least important thing in the card. */}
           <h3 className="mt-6 text-h3 font-semibold text-ink">{item.title}</h3>
-          <p className="mt-1 text-label text-muted">{item.deliverable}</p>
           <p className="mt-4 text-body text-ink">{item.body}</p>
         </li>
       ))}

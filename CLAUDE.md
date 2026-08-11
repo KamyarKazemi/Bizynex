@@ -2,6 +2,11 @@
 
 Operating instructions for Claude Code on this repository. Read `CONTEXT.md` before writing anything.
 
+For the current deployable state — where this deploys, the measured bundle and
+build numbers, what the last production pass changed, what is still blocked on a
+human, and the list of things that look like bugs but are deliberate — read
+`PRODUCTION.md`. Start there when picking up a new session.
+
 ---
 
 ## 1. Who you are here
@@ -28,11 +33,12 @@ If you catch yourself writing something you'd need to explain in a paragraph, st
 
 ## 3. Stack
 
-- **React 18 + Vite + TypeScript**
+- **React 19 + Vite + TypeScript**
 - **Tailwind CSS** with brand tokens defined in config (never raw hex values in components)
-- **three.js via @react-three/fiber + @react-three/drei**
+- **three.js**, driven imperatively — no React wrapper (no `@react-three/fiber`, no `@react-three/drei`). All WebGL is confined to `src/three/`.
 - **Vazirmatn** for Persian and Latin, self-hosted, subset, `woff2`
-- No UI component library. No state manager. No router until there's a second page.
+- No UI component library. No router until there's a second page.
+- **State:** Redux Toolkit is installed and runs one small store — the capability flags in `src/store/`. That store is the single accepted exception; it is not an invitation to move other state into Redux. Component state stays in components, and anything that would grow the store needs a discussion first.
 
 If you want to add anything to this list, ask first and give the trade-off.
 

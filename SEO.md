@@ -1,10 +1,21 @@
 # SEO.md — Bizynex
 
 What was audited, what was changed, what is still open, and what has to happen
-on the day the domain goes live. Read `CLAUDE.md` and `2-CONTEXT.md` first;
+on the day the domain goes live. Read `CLAUDE.md` and `CONTEXT.md` first;
 nothing here overrides either.
 
 Last audit: 2026-08-07, against the current `main` working tree.
+
+> **2026-08-09 — the origin decision changed.** This document previously assumed
+> `bizynex.ir` was the production domain. It is not, and it is not attached to
+> this project. **The production origin is `https://bizynex.vercel.app`** — the
+> Vercel project alias the site is actually served from. Canonicalising to a
+> hostname nobody controls tells Google to index a URL that does not resolve,
+> which de-indexes the page; that is why this was corrected rather than left to
+> the domain purchase. `src/content/site.ts`, `index.html`, `public/robots.txt`
+> and `vercel.json` now all say `bizynex.vercel.app`, and the `www` → apex
+> redirect has been removed as dead config. A custom domain is future work, not
+> a launch blocker — see §4.
 
 ---
 
@@ -51,10 +62,14 @@ slow one.
 
 Also set:
 
-- **`www` → apex 301.** Two hostnames serving identical content splits link
-  equity and can produce duplicate-content ambiguity. Make sure `bizynex.ir`
-  (not `www.`) is set as the **primary domain** in the Vercel dashboard as well
-  — the redirect rule and the dashboard setting should agree.
+- **No redirects.** An earlier version of this config carried a `www` → apex 301
+  for a custom domain. That domain is not attached to the project, so the rule
+  could never fire; it has been removed rather than left as config that names a
+  hostname nobody serves. The site has one hostname —
+  `bizynex.vercel.app` — so there is no duplicate-content split to resolve. If a
+  custom domain is ever added, reinstate the redirect **and** set the apex as
+  the primary domain in the Vercel dashboard, so the rule and the dashboard
+  agree.
 - **Security headers** (`nosniff`, `Referrer-Policy`, `X-Frame-Options`,
   `Permissions-Policy`, HSTS). Not ranking factors, but HSTS removes an HTTP→HTTPS
   redirect hop on repeat visits, which is a real latency win.
@@ -171,11 +186,13 @@ Built clean from a fresh `npm install` in a Linux environment. `tsc -b` passes,
 
 **Prerendered HTML — what a crawler gets with JavaScript disabled:**
 
-- 1035 words / 5,535 characters of Persian body copy
-- Exactly one `<h1>`, six `<h2>`, twenty-two `<h3>` — no skipped levels
-- All eight FAQ questions and answers present as real text
-- Valid JSON-LD: 3 `@graph` nodes, 8 `Question` entities, 6 `WebPageElement`s
+- 777 words of Persian body copy *(was 1035 before the content overhaul —
+  see `CONTENT-PLAN.md`)*
+- Exactly one `<h1>`, seven `<h2>`, twelve `<h3>` — no skipped levels
+- All four FAQ questions and answers present as real text
+- Valid JSON-LD: 3 `@graph` nodes, 4 `Question` entities, 7 `WebPageElement`s
 - `telephone` and `sameAs` correctly absent while unfilled
+- No headcount asserted — `numberOfEmployees` was removed by decision
 
 **Weight:**
 
@@ -210,16 +227,18 @@ Ordered by cost of getting them wrong.
       profiles that are actually maintained — a linked account with four posts
       from last year argues against us.
 - [ ] **Native Persian read-through of `fa.ts`.** The file says it needs one, in
-      two places. Copy is the product here; do not launch without it.
+      two places, and 777 of its words are new as of the content overhaul. Copy
+      is the product here; do not launch without it.
+- [ ] **Set `site.telegram`.** The pricing section is written around the bot
+      being the route to a number, and it currently renders no button because
+      the handle is null.
 - [ ] **Replace `public/brand/favicon.svg`.** It is labelled PLACEHOLDER in its
       own source — on-brand geometry, but not the logo mark. Then re-run
       `npm run build:og`, since the raster icons are cut from the same artwork.
-- [ ] **Set `bizynex.ir` as the primary domain in Vercel** so the dashboard and
-      `vercel.json` agree about the `www` redirect.
-- [ ] **Google Search Console**, verified by DNS TXT (survives redeploys;
-      an HTML meta tag does not survive a careless edit). Submit
-      `https://bizynex.ir/sitemap.xml`. Then **Bing Webmaster Tools**, which
-      accepts a GSC import and takes about two minutes.
+- [ ] **Google Search Console**, verified by the HTML meta tag or file upload —
+      a `vercel.app` alias gives you no DNS to put a TXT record on. Submit
+      `https://bizynex.vercel.app/sitemap.xml`. Then **Bing Webmaster Tools**,
+      which accepts a GSC import and takes about two minutes.
 - [ ] **Validate the deployed page** at `validator.schema.org` and Google's
       Rich Results Test. The FAQ markup should show as eligible.
 - [ ] **Lighthouse on the deployed URL**, mobile preset, throttled. Confirm LCP
@@ -249,6 +268,16 @@ forgotten.
 this and documented the result: palette PNG beats every alternative on flat
 two-colour artwork by a wide margin (1.8 KB vs 7.8 KB AVIF). The existing
 decision is correct; do not "fix" it.
+
+**A custom domain.** Not a launch blocker. `bizynex.vercel.app` is a real,
+indexable origin and the page ranks or does not rank on its merits either way.
+When a custom domain is bought and attached, it is a three-part change and all
+three parts have to land together: `site.url` in `src/content/site.ts`, the
+absolute URLs in `index.html`, and the `Sitemap:` line in `public/robots.txt`.
+Then add the new hostname as the primary domain in Vercel, reinstate the `www`
+→ apex redirect in `vercel.json`, add the property in Search Console, and file
+a change of address. Doing it in the wrong order — canonical pointing at a
+domain that does not resolve yet — is the failure this pass had to undo.
 
 **Breadcrumb structured data.** One page. A breadcrumb of length one is noise.
 

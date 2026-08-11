@@ -3,16 +3,20 @@ type ActionProps = {
   children: string;
   /**
    * `primary` is the teal fill. CONTEXT.md section 4 allows one teal element per
-   * viewport, so there is exactly one primary action in the hero and one in the
-   * contact section — nothing else on the page uses it.
+   * viewport — so there is exactly one primary action in the hero and one in the
+   * contact section. Two in total, never two in the same frame. The pricing
+   * section deliberately renders none — see src/sections/Pricing.tsx. Nothing
+   * else on the page uses it.
    */
+  tone?: 'primary' | 'quiet';
   /**
-   * `quiet-on-dark` is `quiet` for the hero panel, which is navy in both themes.
-   * The plain `quiet` tone is built from semantic tokens that flip with the
-   * theme, so in light mode it would put navy ink on a navy panel.
+   * Leaves the site. Opens in a new tab, with `noopener` so the destination
+   * cannot reach back through `window.opener`.
+   *
+   * Only the Telegram link uses this. `mailto:` and `#anchor` are not external
+   * in the sense that matters here — neither navigates the page away.
    */
-  tone?: 'primary' | 'quiet' | 'quiet-on-dark';
-  className?: string;
+  external?: boolean;
 };
 
 const BASE =
@@ -27,14 +31,15 @@ const BASE =
 const TONES = {
   primary: 'bg-accent-fill px-6 py-3 text-on-accent hover:bg-accent-hover',
   quiet: 'px-1 py-3 text-ink underline decoration-rule underline-offset-8 hover:decoration-ink',
-  // Palette tokens, deliberately: navy-100 on navy-900 is 15.1:1 and teal-300 is
-  // the documented pairing for teal on navy. Neither may follow the theme here.
-  'quiet-on-dark':
-    'px-1 py-3 text-navy-100 underline decoration-navy-600 underline-offset-8 hover:decoration-teal-300',
 } as const;
 
-export const Action = ({ href, children, tone = 'primary', className }: ActionProps) => (
-  <a href={href} className={`${BASE} ${TONES[tone]} ${className ?? ''}`}>
+export const Action = ({ href, children, tone = 'primary', external = false }: ActionProps) => (
+  <a
+    href={href}
+    target={external ? '_blank' : undefined}
+    rel={external ? 'noopener noreferrer' : undefined}
+    className={`${BASE} ${TONES[tone]}`}
+  >
     {children}
   </a>
 );

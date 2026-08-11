@@ -1,56 +1,32 @@
-import { fa } from './content/fa';
-import { useCapabilityDetection } from './hooks/useCapabilityDetection';
-import { useIntroGate } from './hooks/useIntroGate';
-import { Contact } from './sections/Contact';
-import { Faq } from './sections/Faq';
-import { Footer } from './sections/Footer';
-import { Header } from './sections/Header';
-import { Hero } from './sections/Hero';
-import { Intro } from './sections/Intro';
-import { Overture } from './sections/Overture';
-import { Problem } from './sections/Problem';
-import { Process } from './sections/Process';
-import { Services } from './sections/Services';
-import { Why } from './sections/Why';
+import { routeForPath } from './content/routes';
+import { HomePage } from './pages/HomePage';
+import { ServicePage } from './pages/ServicePage';
 
-const App = () => {
-  useCapabilityDetection();
-  const intro = useIntroGate();
+type AppProps = {
+  /**
+   * Which page to render. The prerender passes the route it is building; the
+   * browser leaves it out and the URL answers instead.
+   */
+  path?: string;
+};
 
-  return (
-    <>
-      {/* Two openings, one gate. The overture is the 3D room; the curtain is
-          the typed panel that runs where WebGL is not an option. Which one a
-          visitor gets — or neither — is decided entirely in useIntroGate. */}
-      {intro.isPlaying &&
-        (intro.mode === 'overture' ? (
-          <Overture onFinished={intro.finish} />
-        ) : (
-          <Intro onFinished={intro.finish} />
-        ))}
+/**
+ * The route switch, and nothing else.
+ *
+ * Every page is prerendered to its own file, so by the time this runs the
+ * browser has already been handed the right HTML — this only has to agree with
+ * it, which is why reading `window.location.pathname` is enough and a router
+ * would be dead weight. See src/content/routes.ts.
+ */
+const App = ({ path }: AppProps) => {
+  const route = routeForPath(path ?? window.location.pathname);
 
-      <a
-        href="#main"
-        className="sr-only focus:not-sr-only focus:absolute focus:z-30 focus:m-3 focus:rounded-card focus:bg-ink focus:px-4 focus:py-2 focus:text-paper"
-      >
-        {fa.ui.skipToContent}
-      </a>
+  // No route means a path that was never built. That cannot happen in
+  // production — Vercel serves its own 404 for anything without a file — but
+  // `npm run dev` hands every path to this bundle, so a typo lands on home.
+  if (!route || route.key === 'home') return <HomePage />;
 
-      <Header />
-
-      <main id="main">
-        <Hero />
-        <Problem />
-        <Services />
-        <Process />
-        <Why />
-        <Faq />
-        <Contact />
-      </main>
-
-      <Footer />
-    </>
-  );
+  return <ServicePage routeKey={route.key} />;
 };
 
 export default App;

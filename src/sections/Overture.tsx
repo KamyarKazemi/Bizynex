@@ -11,7 +11,8 @@ import type { OverturePhase } from '../three/OvertureScene';
  *
  * Long enough to watch the word rebuild itself — the tear and the particles take
  * a little over two seconds — and then look at it for a moment before the site
- * takes over. Turning the light back off stops the clock.
+ * takes over. Turning the light back off stops the clock, and reaching for any
+ * control pauses it.
  */
 const COUNTDOWN_MS = 6500;
 /**
@@ -96,6 +97,32 @@ export const Overture = ({ onFinished }: OvertureProps) => {
   const [isMuted, setIsMuted] = useState(wasMuted);
   const pullRef = useRef<HTMLButtonElement>(null);
 
+  /**
+   * Which phase a hold on the countdown was taken in, or null for no hold.
+   *
+   * WCAG 2.2.1 asks that an automatic time limit be one a visitor can turn off,
+   * adjust or extend. Hovering or focusing a control is the extension: someone
+   * who has reached for something is plainly not finished looking.
+   *
+   * The phase is stored with the hold rather than a bare boolean so that a hold
+   * expires with the phase it was taken in, derived, with nothing to reset. That
+   * matters twice over: the pull button is focused on mount, so a hold that
+   * survived would stall the first countdown before it ever started, and the
+   * skip button can be unmounted from under a resting pointer, which not every
+   * browser follows with a `pointerout`. Once the phase moves on, a hold can
+   * only begin again by actually moving a pointer or focus onto a control —
+   * which is the gesture being read in the first place.
+   */
+  const [heldIn, setHeldIn] = useState<OverturePhase | null>(null);
+  const isHeld = heldIn === phase;
+
+  /**
+   * What is left of the countdown, in ms. A ref rather than state because it is
+   * written from the cleanup of the effect that reads it, and state there would
+   * re-run that effect on every pause.
+   */
+  const remainingRef = useRef(COUNTDOWN_MS);
+
   // One audio graph for the life of the opening. Created here rather than in the
   // scene because the mute control is here, and because it has to survive the
   // scene being torn down and rebuilt.
@@ -153,15 +180,30 @@ export const Overture = ({ onFinished }: OvertureProps) => {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
 
-  // The countdown belongs to the light. Turning it back off stops the clock,
-  // because a visitor who reaches for the cord a second time is plainly not
-  // finished looking. The ring itself needs no resetting — it unmounts with the
-  // dark state and its animation starts over when it comes back.
+  // The countdown belongs to the light. Turning it back off stops the clock and
+  // resets it, because a visitor who reaches for the cord a second time is
+  // plainly not finished looking. The ring itself needs no resetting — it
+  // unmounts with the dark state and its animation starts over when it returns.
+  //
+  // A hold only *pauses*: the time already spent is kept, and the ring's own
+  // animation is paused alongside it below, so the two never disagree about how
+  // much is left. There is at most one timer alive at a time — every path out of
+  // this effect runs the cleanup that clears it.
   useEffect(() => {
-    if (phase !== 'lit') return;
-    const timer = window.setTimeout(leave, COUNTDOWN_MS);
-    return () => window.clearTimeout(timer);
-  }, [phase, leave]);
+    if (phase === 'dark') {
+      remainingRef.current = COUNTDOWN_MS;
+      return;
+    }
+    if (phase !== 'lit' || isHeld) return;
+
+    const startedAt = Date.now();
+    const timer = window.setTimeout(leave, remainingRef.current);
+
+    return () => {
+      window.clearTimeout(timer);
+      remainingRef.current = Math.max(0, remainingRef.current - (Date.now() - startedAt));
+    };
+  }, [phase, isHeld, leave]);
 
   useEffect(() => {
     if (phase !== 'leaving') return;
@@ -189,7 +231,7 @@ export const Overture = ({ onFinished }: OvertureProps) => {
     <div
       role="dialog"
       aria-label={fa.ui.overtureTitle}
-      className={`fixed inset-0 z-50 bg-navy-900 ${
+      className={`fixed inset-0 z-50 bg-opening ${
         phase === 'leaving' ? 'opacity-0' : 'opacity-100'
       }`}
       style={{
@@ -219,7 +261,7 @@ export const Overture = ({ onFinished }: OvertureProps) => {
         aria-hidden="true"
         dir="ltr"
         lang="en"
-        className={`pointer-events-none absolute inset-0 flex items-center justify-center font-semibold tracking-[0.16em] text-navy-700 transition-opacity duration-700 ${
+        className={`pointer-events-none absolute inset-0 flex items-center justify-center font-semibold tracking-[0.16em] text-opening-faint transition-opacity duration-700 ${
           isSceneReady ? 'opacity-0' : 'opacity-100'
         }`}
         style={{ fontSize: 'clamp(2rem, 1rem + 5vw, 4.5rem)' }}
@@ -228,16 +270,40 @@ export const Overture = ({ onFinished }: OvertureProps) => {
       </p>
 
       {/* Controls float over the canvas, so this layer has to let a pointer
-          through to the cord underneath. Each control turns events back on. */}
-      <div className="pointer-events-none absolute inset-0">
+          through to the cord underneath. Each control turns events back on.
+
+          Hover or focus anywhere in here pauses the countdown, and leaving
+          resumes it. The handlers sit on the shared layer rather than on each
+          control because `pointerover`/`focusin` bubble — one pair covers every
+          control inside, including any added later. The `relatedTarget` checks
+          are what stop a move *between* two controls from reading as a leave;
+          it is the same test the header's pill uses. */}
+      <div
+        className="pointer-events-none absolute inset-0"
+        onPointerOver={() => setHeldIn(phase)}
+        onPointerOut={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setHeldIn(null);
+        }}
+        onFocus={() => setHeldIn(phase)}
+        onBlur={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget)) setHeldIn(null);
+        }}
+      >
         <div className="absolute" style={{ insetInlineStart: CORD_INSET, top: CORD_BELOW }}>
           <button
             ref={pullRef}
             type="button"
             onClick={toggle}
             aria-label={isLit ? fa.ui.overturePullOffLabel : fa.ui.overturePullLabel}
-            disabled={phase === 'leaving'}
-            className="pointer-events-auto min-h-11 px-2 text-label text-navy-100 underline decoration-navy-600 underline-offset-8 transition-colors duration-200 hover:decoration-teal-300"
+            // aria-disabled, not disabled. This is the button we focus on mount,
+            // and a real `disabled` would have the browser drop focus to <body>
+            // the instant it was pressed — leaving a keyboard visitor with no
+            // focus at all for the 1.75s exit. `toggle` already ignores presses
+            // while leaving, so the button only has to *say* it is unavailable.
+            // Nothing here was keyed off `:disabled`, so there is no visual state
+            // to move across: the whole panel is already fading out by then.
+            aria-disabled={phase === 'leaving'}
+            className="pointer-events-auto min-h-11 px-2 text-label text-opening-ink underline decoration-opening-muted underline-offset-8 transition-colors duration-200 hover:decoration-opening-accent"
           >
             {isLit ? fa.ui.overturePullAgain : fa.ui.overturePull}
           </button>
@@ -248,8 +314,7 @@ export const Overture = ({ onFinished }: OvertureProps) => {
           onClick={toggleMuted}
           aria-pressed={isMuted}
           aria-label={isMuted ? fa.ui.overtureUnmute : fa.ui.overtureMute}
-          className="pointer-events-auto absolute top-6 grid size-11 place-items-center text-navy-600 transition-colors duration-200 hover:text-navy-100"
-          style={{ insetInlineEnd: '1.5rem' }}
+          className="pointer-events-auto absolute end-6 top-6 grid size-11 place-items-center text-opening-muted transition-colors duration-200 hover:text-opening-ink"
         >
           {isMuted ? (
             <HiOutlineSpeakerXMark aria-hidden="true" className="size-5" />
@@ -263,7 +328,7 @@ export const Overture = ({ onFinished }: OvertureProps) => {
             <button
               type="button"
               onClick={bail}
-              className="pointer-events-auto min-h-11 px-3 text-label text-navy-600 underline underline-offset-4 transition-colors duration-200 hover:text-navy-100"
+              className="pointer-events-auto min-h-11 px-3 text-label text-opening-muted underline underline-offset-4 transition-colors duration-200 hover:text-opening-ink"
             >
               {fa.ui.skipIntro}
             </button>
@@ -285,7 +350,7 @@ export const Overture = ({ onFinished }: OvertureProps) => {
                   r={RING_RADIUS}
                   fill="none"
                   strokeWidth="2"
-                  className="stroke-navy-700"
+                  className="stroke-opening-faint"
                 />
                 <circle
                   cx="30"
@@ -298,16 +363,21 @@ export const Overture = ({ onFinished }: OvertureProps) => {
                     {
                       '--ring-length': RING_LENGTH,
                       animation: `ring-fill ${COUNTDOWN_MS}ms linear forwards`,
+                      // Frozen in step with the timer above, so a paused clock
+                      // looks paused rather than continuing to fill against a
+                      // countdown that is no longer running. Longhand after the
+                      // shorthand, which is what lets it win.
+                      animationPlayState: isHeld ? 'paused' : 'running',
                     } as CSSProperties
                   }
-                  className="stroke-teal-300"
+                  className="stroke-opening-accent"
                 />
               </svg>
 
               <button
                 type="button"
                 onClick={leave}
-                className="pointer-events-auto min-h-11 px-2 text-label text-navy-100 underline decoration-navy-600 underline-offset-8 transition-colors duration-200 hover:decoration-teal-300"
+                className="pointer-events-auto min-h-11 px-2 text-label text-opening-ink underline decoration-opening-muted underline-offset-8 transition-colors duration-200 hover:decoration-opening-accent"
               >
                 {fa.ui.overtureEnter}
               </button>

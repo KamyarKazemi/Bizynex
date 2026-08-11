@@ -407,6 +407,12 @@ type OvertureSceneProps = {
   onPulled: () => void;
   /** First frame is on screen. The opening waits on this before trusting it. */
   onReady: () => void;
+  /**
+   * The room can no longer be drawn, so let the visitor through. Only the GL
+   * context being lost fires this — a thrown error goes to the boundary — and
+   * a lost context is not something React can see.
+   */
+  onFailed: () => void;
   audio: OvertureAudio;
 };
 
@@ -417,7 +423,14 @@ type OvertureSceneProps = {
  * loaded assets. It is deliberately a closed box: it takes a phase in and
  * reports a pull out, and every animation inside is driven from those two.
  */
-const OvertureScene = ({ phase, active, onPulled, onReady, audio }: OvertureSceneProps) => {
+const OvertureScene = ({
+  phase,
+  active,
+  onPulled,
+  onReady,
+  onFailed,
+  audio,
+}: OvertureSceneProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<{
     start: () => void;
@@ -428,18 +441,28 @@ const OvertureScene = ({ phase, active, onPulled, onReady, audio }: OvertureScen
   // Kept in refs so a new callback identity never tears down the GL context.
   const onPulledRef = useRef(onPulled);
   const onReadyRef = useRef(onReady);
+  const onFailedRef = useRef(onFailed);
   const audioRef = useRef(audio);
   useEffect(() => {
     onPulledRef.current = onPulled;
     onReadyRef.current = onReady;
+    onFailedRef.current = onFailed;
     audioRef.current = audio;
-  }, [onPulled, onReady, audio]);
+  }, [onPulled, onReady, onFailed, audio]);
 
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
 
     const budget = budgetFor();
+
+    /**
+     * Set the moment this effect is cleaned up. The font-ready promise below can
+     * resolve long after the opening was skipped, and building nine thousand
+     * points into a scene that has already been disposed is both a wasted
+     * allocation and a leak.
+     */
+    let torn = false;
 
     /* -- Renderer ------------------------------------------------------- */
 
@@ -570,7 +593,7 @@ const OvertureScene = ({ phase, active, onPulled, onReady, audio }: OvertureScen
     let particles: Points | null = null;
 
     const buildParticles = () => {
-      if (particles) return;
+      if (torn || particles) return;
 
       const targets = wordmark.sample(budget.particles);
       if (targets.length === 0) return;
@@ -806,6 +829,15 @@ const OvertureScene = ({ phase, active, onPulled, onReady, audio }: OvertureScen
     const resize = () => {
       const { clientWidth, clientHeight } = container;
       if (clientWidth === 0 || clientHeight === 0) return;
+
+      // Re-read rather than sampled once at mount: browser zoom changes the
+      // ratio, and so does dragging the window onto a display of a different
+      // density. The two point shaders size their motes from it, so they have
+      // to hear about it as well or the dust is drawn at the old density.
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      particleMaterial.uniforms.uPixelRatio.value = renderer.getPixelRatio();
+      dustMaterial.uniforms.uPixelRatio.value = renderer.getPixelRatio();
+
       renderer.setSize(clientWidth, clientHeight, false);
       camera.aspect = clientWidth / clientHeight;
       camera.updateProjectionMatrix();
@@ -1179,13 +1211,28 @@ const OvertureScene = ({ phase, active, onPulled, onReady, audio }: OvertureScen
       },
     };
 
+    // A lost context throws nothing, so the boundary above never fires — and
+    // this room is covering the whole site, so the visitor would be stranded in
+    // a frozen dark rectangle. preventDefault stops the browser restoring it
+    // underneath a scene that is about to be torn down; the report is what lets
+    // them straight through to the page.
+    const onContextLost = (event: Event) => {
+      event.preventDefault();
+      cancelAnimationFrame(frame);
+      frame = 0;
+      onFailedRef.current();
+    };
+    canvas.addEventListener('webglcontextlost', onContextLost);
+
     return () => {
+      torn = true;
       cancelAnimationFrame(frame);
       frame = 0;
       sceneRef.current = null;
       timelines.forEach((timeline) => timeline.kill());
       resizeObserver.disconnect();
       canvas.removeEventListener('pointerdown', onPointerDown);
+      canvas.removeEventListener('webglcontextlost', onContextLost);
       window.removeEventListener('pointermove', onPointerMove);
       window.removeEventListener('pointerup', onPointerUp);
       window.removeEventListener('pointercancel', onPointerUp);
@@ -1201,6 +1248,12 @@ const OvertureScene = ({ phase, active, onPulled, onReady, audio }: OvertureScen
         if (Array.isArray(material)) material.forEach((entry) => entry.dispose());
         else material?.dispose();
       });
+      // Not left to the traversal above. The particle material only ever joins
+      // the graph once the points are built, and the points are not built at
+      // all if the opening is skipped before the font lands or if the wordmark
+      // sampled nothing — so it is released by hand, from the one place that is
+      // certain to run. Disposing twice is harmless; disposing never is a leak.
+      particleMaterial.dispose();
       wordmark.texture.dispose();
       spot.shadow.map?.dispose();
 

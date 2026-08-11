@@ -11,11 +11,18 @@
  */
 export const HERO_ID = 'top';
 
+/**
+ * Every key here must have a matching `fa[key].title` — src/content/jsonLd.ts
+ * builds the page's `hasPart` list by walking this object and reading that
+ * title, so a key with no copy behind it is a build error rather than a silent
+ * gap. Order is render order.
+ */
 export const SECTION_IDS = {
   problem: 'problem',
   services: 'services',
   process: 'process',
-  why: 'why',
+  delivery: 'delivery',
+  pricing: 'pricing',
   faq: 'faq',
   contact: 'contact',
 } as const;
@@ -28,20 +35,21 @@ export const SECTION_INDEX = {
   problem: '۰۱',
   services: '۰۲',
   process: '۰۳',
-  why: '۰۴',
-  faq: '۰۵',
-  contact: '۰۶',
+  delivery: '۰۴',
+  pricing: '۰۵',
+  faq: '۰۶',
+  contact: '۰۷',
 } as const;
 
 export const site = {
   /**
    * Canonical origin. No trailing slash — every URL built from it adds its own.
    * Used by the sitemap, the JSON-LD @id, and the og:url in index.html; if this
-   * changes, public/sitemap.xml and index.html change with it.
+   * changes, public/robots.txt and index.html change with it.
    */
-  url: 'https://bizynex.ir',
+  url: 'https://bizynex.vercel.app',
 
-  email: 'info@bizynex.ir',
+  email: 'bizynexservices@gmail.com',
 
   /**
    * ⚠ FILL THIS IN BEFORE LAUNCH.
@@ -97,15 +105,36 @@ export const site = {
   region: 'استان فارس',
   countryCode: 'IR',
 
-  /** Gregorian. Switch to the Jalali year if that is the house convention. */
-  year: '۲۰۲۶',
+  /**
+   * The footer's copyright year. Gregorian — switch the calendar here if the
+   * Jalali year becomes the house convention.
+   *
+   * Derived rather than written down: a literal goes stale at midnight on 31
+   * December and, because the page is prerendered, stays stale until someone
+   * happens to redeploy and notice.
+   *
+   * `useGrouping: false` is load-bearing, not defensive. The default groups the
+   * thousands and fa-IR's separator is «٬», so the year would render as ۲٬۰۲۶.
+   *
+   * This is evaluated twice — once by the prerender in Node and once again on
+   * hydration in the browser — and both produce the identical Persian-numeral
+   * string, so there is no mismatch. The one exception is a page prerendered on
+   * one side of New Year's midnight and hydrated on the other, which resolves
+   * itself on the next request.
+   */
+  year: new Intl.NumberFormat('fa-IR', { useGrouping: false }).format(new Date().getFullYear()),
 
   /**
-   * The Telegram bot, once it exists. Null until then, and the contact section
-   * renders nothing for it — a dead link to a bot that does not answer costs
-   * more trust than a missing channel does.
+   * The Telegram bot. It handles the pricing conversation, which is why the
+   * هزینه و زمان section is written around it rather than around a published
+   * number — see fa.pricing and src/sections/Pricing.tsx.
+   *
+   * Typed as nullable on purpose. Setting it back to null is the switch that
+   * pulls every reference to the bot off the page in one edit, which is what
+   * you want available the day the bot is down or being replaced. A link to a
+   * bot that does not answer costs more trust than a missing channel does.
    */
-  telegram: null as string | null,
+  telegram: 'https://t.me/BizynexBot' as string | null,
 } as const;
 
 export const mailtoHref = `mailto:${site.email}`;

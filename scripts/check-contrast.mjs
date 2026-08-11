@@ -62,6 +62,13 @@ const PAIRS = [
   // The hero panel. Covers the DOM heading shown whenever the scene is not
   // drawing, and the copy the scene itself paints, which use the same token.
   ['hero heading on panel', 'ink', 'panel', 4.5],
+  // The opening rooms (Intro, Overture). Always dark in both themes, so both
+  // passes below check the same numbers — that is the point. These went
+  // unchecked once and a 2.14:1 skip button shipped, which is the control a
+  // visitor needs most.
+  ['opening room text', 'opening-ink', 'opening', 4.5],
+  ['opening room skip and mute controls', 'opening-muted', 'opening', 4.5],
+  ['opening room teal mark', 'opening-accent', 'opening', 4.5],
   ['action label on accent fill', 'on-accent', 'accent-fill', 4.5],
   ['action label on hover fill', 'on-accent', 'accent-hover', 4.5],
   ['focus ring against page', 'accent-text', 'paper', 3],

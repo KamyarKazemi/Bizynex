@@ -180,6 +180,13 @@ type HeroSceneProps = {
    * heading only ever steps aside for words that are genuinely on screen.
    */
   onCopyDrawn: (drawing: boolean) => void;
+  /**
+   * The scene can no longer draw. Only the GL context being lost fires this —
+   * a thrown error goes to the boundary instead — and it exists because a lost
+   * context is not an error React can see, so without it the panel stays blank
+   * with the static figure already faded out.
+   */
+  onFailed: () => void;
 };
 
 /**
@@ -191,17 +198,19 @@ type HeroSceneProps = {
  * shadow that lands on the wordmark, and fog between the layers, because the
  * brief was depth and depth is not something you can shade in.
  */
-const HeroScene = ({ targetId, active, onReady, onCopyDrawn }: HeroSceneProps) => {
+const HeroScene = ({ targetId, active, onReady, onCopyDrawn, onFailed }: HeroSceneProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const loopRef = useRef<{ start: () => void; stop: () => void } | null>(null);
   const onReadyRef = useRef(onReady);
   const onCopyDrawnRef = useRef(onCopyDrawn);
+  const onFailedRef = useRef(onFailed);
 
   // Kept in refs so a new callback identity never tears down the GL context.
   useEffect(() => {
     onReadyRef.current = onReady;
     onCopyDrawnRef.current = onCopyDrawn;
-  }, [onReady, onCopyDrawn]);
+    onFailedRef.current = onFailed;
+  }, [onReady, onCopyDrawn, onFailed]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -486,6 +495,11 @@ const HeroScene = ({ targetId, active, onReady, onCopyDrawn }: HeroSceneProps) =
     const resize = () => {
       const { clientWidth, clientHeight } = container;
       if (clientWidth === 0 || clientHeight === 0) return;
+
+      // Re-read rather than sampled once at mount: browser zoom changes the
+      // ratio, and so does dragging the window onto a display of a different
+      // density. Both reach here, because both change the panel's box.
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
       renderer.setSize(clientWidth, clientHeight, false);
       camera.aspect = clientWidth / clientHeight;
 
@@ -622,6 +636,20 @@ const HeroScene = ({ targetId, active, onReady, onCopyDrawn }: HeroSceneProps) =
       },
     };
 
+    // Mobile Safari drops GL contexts routinely when a tab is backgrounded, and
+    // a dropped context throws nothing — the boundary above never fires, so
+    // without this the panel is a blank rectangle for good while the loop keeps
+    // drawing into a dead context. preventDefault stops the browser restoring
+    // it underneath a scene that is about to be torn down; the report is what
+    // brings the static figure back.
+    const onContextLost = (event: Event) => {
+      event.preventDefault();
+      cancelAnimationFrame(frame);
+      frame = 0;
+      onFailedRef.current();
+    };
+    canvas.addEventListener('webglcontextlost', onContextLost);
+
     return () => {
       cancelAnimationFrame(frame);
       frame = 0;
@@ -632,6 +660,7 @@ const HeroScene = ({ targetId, active, onReady, onCopyDrawn }: HeroSceneProps) =
       resizeObserver.disconnect();
       themeObserver.disconnect();
       window.removeEventListener('pointermove', onPointerMove);
+      canvas.removeEventListener('webglcontextlost', onContextLost);
 
       // Every geometry and material above, released by walking the graph — one
       // traversal cannot forget a mesh the way a hand-written list eventually
@@ -661,7 +690,9 @@ const HeroScene = ({ targetId, active, onReady, onCopyDrawn }: HeroSceneProps) =
     if (!loop) return;
     if (active) loop.start();
     else loop.stop();
-  }, [active]);
+    // targetId is here because the effect above rebuilds the loop when it
+    // changes, and a fresh loop nobody starts is a blank panel.
+  }, [active, targetId]);
 
   return <div ref={containerRef} className="h-full w-full" />;
 };

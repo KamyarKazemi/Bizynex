@@ -7,7 +7,7 @@ import { useAppSelector } from '../store';
 import { selectReducedMotion } from '../store/capabilitySlice';
 
 /**
- * The hero, plus the four sections the nav links to. Stable identity, so the
+ * The hero, plus the three sections the nav links to. Stable identity, so the
  * observer inside useActiveSection is built once.
  *
  * The hero is in the list without being in the nav on purpose: it is how the
@@ -68,7 +68,7 @@ type Capsule = {
  *
  * ## The mechanism: a strip, and a window onto it
  *
- * The four links are one strip that never reflows. In front of them sits one
+ * The three links are one strip that never reflows. In front of them sits one
  * capsule, and around them sits a window that clips whatever the capsule is not
  * standing on. Three things move, all from the same measurement:
  *
@@ -109,7 +109,18 @@ type Capsule = {
  * at all — a control that collapses out of reach is a different control, not a
  * calmer one.
  */
-export const Header = () => {
+type HeaderProps = {
+  /**
+   * Prepended to every nav href. The three links are in-page anchors and the
+   * sections they point at exist only on the home page, so a service page
+   * passes '/' and they become '/#services' — travel home, then scroll. Empty
+   * on the home page, where the plain anchor is what keeps the scroll smooth
+   * and the URL clean.
+   */
+  hrefPrefix?: string;
+};
+
+export const Header = ({ hrefPrefix = '' }: HeaderProps) => {
   const prefersReducedMotion = useAppSelector(selectReducedMotion);
   const activeId = useActiveSection(OBSERVED_IDS);
   const [isOpen, setIsOpen] = useState(false);
@@ -117,7 +128,9 @@ export const Header = () => {
   const pillRef = useRef<HTMLDivElement>(null);
   const stripRef = useRef<HTMLUListElement>(null);
 
-  // Undefined in the hero, and in the two sections the nav does not link to.
+  // Undefined in the hero, and while passing any section the nav does not link
+  // to — OBSERVED_IDS watches the hero plus the three nav targets and nothing
+  // else, so problem, delivery, pricing and faq never become the active id.
   // The pill only condenses when it has a section to name, so those stretches
   // are simply the open state — no fallback, and nothing claimed that is untrue.
   const activeLink = NAV_LINKS.find((link) => link.href.slice(1) === activeId);
@@ -244,7 +257,7 @@ export const Header = () => {
                 className={`relative flex w-max items-center p-1.5 transition-[margin-inline-start] ${MORPH}`}
                 style={{ marginInlineStart: isCondensed && capsule ? RING_ROOM - capsule.start : 0 }}
               >
-                {/* One capsule for four links. It is a sibling rather than a
+                {/* One capsule for three links. It is a sibling rather than a
                     background so that it can travel between them. */}
                 {capsule && (
                   <span
@@ -260,7 +273,7 @@ export const Header = () => {
                   return (
                     <li key={link.key}>
                       <a
-                        href={link.href}
+                        href={`${hrefPrefix}${link.href}`}
                         aria-current={isActive ? 'true' : undefined}
                         onClick={() => setIsOpen(false)}
                         // `relative` to sit above the capsule, which is earlier

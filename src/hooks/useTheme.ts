@@ -22,15 +22,23 @@ const readStoredChoice = () => {
  *
  * The colour handed to `theme-color` is read back out of the token rather than
  * written here, so there is still exactly one place a hex value lives.
+ *
+ * index.html ships two `theme-color` tags, scoped to the light and dark media
+ * queries, so the first paint is right before any of this runs. Once the theme
+ * is being driven from here that scoping is no longer the truth, so `media`
+ * comes off both and both carry the resolved colour.
  */
 const apply = (theme: Theme) => {
   document.documentElement.dataset.theme = theme;
 
-  const meta = document.querySelector('meta[name="theme-color"]');
-  meta?.setAttribute(
-    'content',
-    getComputedStyle(document.documentElement).getPropertyValue('--color-paper').trim(),
-  );
+  const colour = getComputedStyle(document.documentElement)
+    .getPropertyValue('--color-paper')
+    .trim();
+
+  document.querySelectorAll('meta[name="theme-color"]').forEach((meta) => {
+    meta.removeAttribute('media');
+    meta.setAttribute('content', colour);
+  });
 };
 
 /**

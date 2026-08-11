@@ -4,6 +4,8 @@ Single-page Persian introduction site. React + Vite + TypeScript + Tailwind v4, 
 three.js scene in the hero.
 
 Read `CONTEXT.md` for the brand rules and `CLAUDE.md` for the engineering rules. They are binding.
+`PRODUCTION.md` has the current deployable state: where it deploys, the measured
+build numbers, and what is still blocked on a human before launch.
 
 ## Running it
 

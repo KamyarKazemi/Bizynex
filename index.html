@@ -11,7 +11,7 @@
       the JSON-LD — see the placeholder further down and src/content/jsonLd.ts.
 
       The origin appears in several places here and once more in
-      src/content/site.ts and public/sitemap.xml. If the domain changes, change
+      src/content/site.ts and public/robots.txt. If the domain changes, change
       all three.
 
       Title is kept under ~60 characters so Google does not truncate it, and it
@@ -21,9 +21,9 @@
     <title>طراحی سایت، اپلیکیشن و اتوماسیون در شیراز | بیزینکس</title>
     <meta
       name="description"
-      content="ما یک تیم کوچک در شیرازیم و برای کسب‌وکارها وب‌سایت، اپلیکیشن و اتوماسیون می‌سازیم. پیش از شروع می‌نویسیم قرار است چه چیزی ساخته شود، در طول کار خبرتان می‌کنیم، و بعد از تحویل هم می‌مانیم."
+      content="یک تیم کوچک در شیراز. برای کسب‌وکارها وب‌سایت، اپلیکیشن و اتوماسیون می‌سازیم؛ محدوده را پیش از شروع می‌نویسیم و بعد از تحویل هم می‌مانیم."
     />
-    <link rel="canonical" href="https://bizynex.ir/" />
+    <link rel="canonical" href="https://bizynex.vercel.app/" />
     <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
 
     <!--
@@ -32,18 +32,13 @@
       Persian-by-accident, which matters when the same query is served in three
       languages. x-default points at the same URL: there is nowhere else to go.
     -->
-    <link rel="alternate" hreflang="fa-IR" href="https://bizynex.ir/" />
-    <link rel="alternate" hreflang="x-default" href="https://bizynex.ir/" />
-
-    <!-- Country and city, for the engines that still read these. Cheap, and the
-         same facts are in the JSON-LD PostalAddress where they carry more. -->
-    <meta name="geo.region" content="IR-07" />
-    <meta name="geo.placename" content="Shiraz" />
+    <link rel="alternate" hreflang="fa-IR" href="https://bizynex.vercel.app/" />
+    <link rel="alternate" hreflang="x-default" href="https://bizynex.vercel.app/" />
 
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="بیزینکس" />
     <meta property="og:locale" content="fa_IR" />
-    <meta property="og:url" content="https://bizynex.ir/" />
+    <meta property="og:url" content="https://bizynex.vercel.app/" />
     <meta property="og:title" content="طراحی سایت، اپلیکیشن و اتوماسیون در شیراز | بیزینکس" />
     <meta
       property="og:description"
@@ -53,7 +48,7 @@
          wording change cannot leave a stale card behind. Dimensions are stated
          because several previewers lay the card out before the image has
          downloaded, and a card that reflows is a card that looks broken. -->
-    <meta property="og:image" content="https://bizynex.ir/brand/og-cover.png" />
+    <meta property="og:image" content="https://bizynex.vercel.app/brand/og-cover.png" />
     <meta property="og:image:type" content="image/png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
@@ -65,23 +60,39 @@
       name="twitter:description"
       content="یک تیم کوچک در شیراز. وب‌سایت، اپلیکیشن و اتوماسیون می‌سازیم — و از اولین گفتگو تا سال‌ها بعد از تحویل، همان آدم‌هایی هستیم که جواب می‌دهیم."
     />
-    <meta name="twitter:image" content="https://bizynex.ir/brand/og-cover.png" />
+    <meta name="twitter:image" content="https://bizynex.vercel.app/brand/og-cover.png" />
     <meta name="twitter:image:alt" content="بیزینکس — وب‌سایت، اپلیکیشن و اتوماسیون برای کسب‌وکارها، شیراز" />
 
-    <meta name="theme-color" content="#FFFFFF" />
+    <!--
+      Both values are declared statically, so a device in dark mode gets the dark
+      colour on the very first paint — before the script below has run — and so
+      does anything that reads this HTML without executing it. The two hexes are
+      --color-paper and --color-navy-900 from src/styles/tokens.css.
+    -->
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#FFFFFF" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0A1A28" />
 
     <!--
-      Four icons, because four different consumers ask for four different
-      things and none of them falls back to the others:
+      Icons, because several consumers ask for different things and none of
+      them falls back to the others:
 
-        favicon.svg       every current browser, and it scales
+        favicon-32/48     the browser tab, at both display densities
         icon-96.png       Google's favicon crawler, which wants a raster ≥48px
         apple-touch-icon  iOS home screen, opaque, exactly 180×180
         site.webmanifest  Android's install prompt, and the name it uses
 
-      All of them come out of `npm run build:og`.
+      All of them come out of `npm run build:og`, and all of them are the mark
+      alone — the stacked lockup's wordmark is unreadable below about 128px.
+
+      Raster rather than SVG: the only masters in this repo are PNG, and a
+      hand-traced vector of a woven mark is a redrawn mark, which CONTEXT.md
+      section 3 forbids. If the original vector artwork turns up, an svg+xml
+      icon link placed in front of these two is a strictly better first choice —
+      browsers take the first format they understand — and it would also let the
+      mark answer to prefers-color-scheme, which a PNG cannot.
     -->
-    <link rel="icon" type="image/svg+xml" href="/brand/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/brand/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="48x48" href="/brand/favicon-48.png" />
     <link rel="icon" type="image/png" sizes="96x96" href="/brand/icon-96.png" />
     <link rel="apple-touch-icon" href="/brand/apple-touch-icon.png" />
     <link rel="manifest" href="/site.webmanifest" />
@@ -100,9 +111,20 @@
           var stored = localStorage.getItem('bizynex:theme');
           var dark = stored ? stored === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
           document.documentElement.dataset.theme = dark ? 'dark' : 'light';
-          if (dark) {
-            var meta = document.querySelector('meta[name="theme-color"]');
-            if (meta) meta.setAttribute('content', '#0A1A28');
+          if (stored) {
+            /*
+              A stored choice is a deliberate one, so it has to beat the two
+              media-scoped tags above — which otherwise still answer to the OS.
+              Dropping `media` from both leaves the last one winning, so both
+              get the resolved colour and it no longer matters which that is.
+              Untouched when there is no stored choice: the tags are already
+              right, and the browser has already used them.
+            */
+            var metas = document.querySelectorAll('meta[name="theme-color"]');
+            for (var i = 0; i < metas.length; i++) {
+              metas[i].removeAttribute('media');
+              metas[i].setAttribute('content', dark ? '#0A1A28' : '#FFFFFF');
+            }
           }
         } catch (error) {
           /* Storage blocked. The CSS media query still gives the right theme. */
@@ -206,6 +228,10 @@
         align-items: center;
         justify-content: center;
         background-color: #0a1a28;
+        /* 1.58:1, deliberately. This is the ghost wordmark, not readable text:
+           the element is aria-hidden="true" and the same word appears in the
+           page proper, so raising it would only turn a quiet cover into a
+           splash screen. Leave it. (Matches --color-opening-faint.) */
         color: #1d3e58;
         font-family: Vazirmatn, system-ui, sans-serif;
         font-weight: 600;

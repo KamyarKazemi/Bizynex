@@ -109,7 +109,7 @@ export const Intro = ({ onFinished }: IntroProps) => {
           readable by assistive technology, so this is hidden from it entirely. */}
       <div
         aria-hidden="true"
-        className="fixed inset-0 z-50 flex items-center justify-center bg-navy-900"
+        className="fixed inset-0 z-50 flex items-center justify-center bg-opening"
         style={{
           clipPath: isWiping
             ? 'polygon(0% -118%, 100% -100%, 100% 0%, 0% -18%)'
@@ -121,7 +121,7 @@ export const Intro = ({ onFinished }: IntroProps) => {
         <p
           dir="ltr"
           lang="en"
-          className={`flex items-baseline font-semibold tracking-tight text-white transition-opacity duration-300 ${
+          className={`flex items-baseline font-semibold tracking-tight text-opening-ink transition-opacity duration-300 ${
             isWiping ? 'opacity-0' : 'opacity-100'
           }`}
           style={{ fontSize: 'clamp(2.5rem, 1.5rem + 5vw, 5rem)' }}
@@ -132,16 +132,22 @@ export const Intro = ({ onFinished }: IntroProps) => {
         </p>
       </div>
 
-      {/* Outside the hidden panel so it is a real, reachable control. */}
-      <button
-        type="button"
-        onClick={skip}
-        className={`fixed bottom-8 left-1/2 z-50 -translate-x-1/2 text-label text-navy-600 underline underline-offset-4 transition-opacity duration-300 hover:text-white focus-visible:text-white ${
-          isWiping ? 'pointer-events-none opacity-0' : 'opacity-100'
-        }`}
-      >
-        {fa.ui.skipIntro}
-      </button>
+      {/* Outside the hidden panel so it is a real, reachable control.
+          Centred by a full-width strip rather than a physical inset plus a
+          translate, so it survives the day the layout is mirrored. The strip
+          spans the viewport, so it has to let pointer events through to the
+          page behind it; only the button itself takes them back. */}
+      <div className="pointer-events-none fixed inset-x-0 bottom-8 z-50 flex justify-center px-4">
+        <button
+          type="button"
+          onClick={skip}
+          className={`min-h-11 px-3 text-label text-opening-muted underline underline-offset-4 transition-opacity duration-300 hover:text-opening-ink focus-visible:text-opening-ink ${
+            isWiping ? 'pointer-events-none opacity-0' : 'pointer-events-auto opacity-100'
+          }`}
+        >
+          {fa.ui.skipIntro}
+        </button>
+      </div>
     </>
   );
 };

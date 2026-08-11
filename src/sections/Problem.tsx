@@ -16,6 +16,10 @@ export const Problem = () => (
   <Section id={SECTION_IDS.problem} surface>
     <SectionHeader index={SECTION_INDEX.problem} title={fa.problem.title} />
     <p className="max-w-measure text-lead text-ink">{fa.problem.lead}</p>
-    <p className="mt-6 max-w-measure text-body text-ink">{fa.problem.body}</p>
+
+    {/* The page's spine. It is the only sentence on the site that talks about
+        the site, which is exactly why it is set apart rather than run on from
+        the paragraph above — a reader skimming should still catch it. */}
+    <p className="mt-8 max-w-measure text-body text-muted">{fa.problem.bridge}</p>
   </Section>
 );
