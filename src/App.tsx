@@ -1,3 +1,4 @@
+import { Analytics } from '@vercel/analytics/react';
 import { routeForPath } from './content/routes';
 import { HomePage } from './pages/HomePage';
 import { ServicePage } from './pages/ServicePage';
@@ -24,9 +25,21 @@ const App = ({ path }: AppProps) => {
   // No route means a path that was never built. That cannot happen in
   // production — Vercel serves its own 404 for anything without a file — but
   // `npm run dev` hands every path to this bundle, so a typo lands on home.
-  if (!route || route.key === 'home') return <HomePage />;
+  if (!route || route.key === 'home') {
+    return (
+      <>
+        <HomePage />
+        <Analytics />
+      </>
+    );
+  }
 
-  return <ServicePage routeKey={route.key} />;
+  return (
+    <>
+      <ServicePage routeKey={route.key} />
+      <Analytics />
+    </>
+  );
 };
 
 export default App;
