@@ -77,5 +77,22 @@ export const publishedRoutes = (): readonly Route[] =>
 const withoutTrailingSlash = (pathname: string) =>
   pathname.length > 1 && pathname.endsWith('/') ? pathname.slice(0, -1) : pathname;
 
+/**
+ * A published route that is not home, narrowed so that `fa.pages[route.key]` is
+ * a safe lookup — `fa.pages` has no `home` entry, and the compiler has to be
+ * told that dropping home is what makes that lookup safe.
+ */
+export type ServicePageRoute = Route & { readonly key: ServiceRouteKey };
+
+/**
+ * Every page the header menu, the footer and a service page's cross-links list.
+ * All three show the same set in the same order, which is the point: navigation
+ * that changes shape as you move through the site is navigation you have to
+ * re-read. It lives here rather than in one of them because it is a question
+ * about the route table, and the route table is here.
+ */
+export const servicePageRoutes = (): readonly ServicePageRoute[] =>
+  publishedRoutes().filter((route): route is ServicePageRoute => route.key !== 'home');
+
 export const routeForPath = (pathname: string): Route | undefined =>
   publishedRoutes().find((route) => route.path === withoutTrailingSlash(pathname));

@@ -5,6 +5,16 @@ type PageCopy = {
   readonly title: string;
   /** The paragraph directly under it. */
   readonly intro: string;
+  /**
+   * One line, for the header menu and the cross-links at the foot of a sibling
+   * page. It is read next to the title, so it must not repeat it — the title
+   * names the thing and this says what the page argues about it.
+   *
+   * Deliberately not the first sentence of `intro`. A blurb that is a truncated
+   * paragraph reads as a truncated paragraph, and «…» in a menu is a promise
+   * that something was left out.
+   */
+  readonly blurb: string;
   readonly sections: readonly { readonly heading: string; readonly body: string }[];
 };
 
@@ -38,6 +48,7 @@ const pages: Record<ServiceRouteKey, PageCopy> = {
     title: 'اتوماسیون کارهای تکراری',
     intro:
       'کاری که هر هفته دستی انجام می‌شود، معمولاً لازم نیست دستی انجام شود. همان کار را به سیستم می‌سپاریم و وقتی که آزاد می‌شود به تیم شما برمی‌گردد.',
+    blurb: 'کار تکراری هفتگی که لازم نیست دستی انجام شود',
     sections: [
       {
         heading: 'معمولاً از اینجا شروع می‌شود',
@@ -61,6 +72,7 @@ const pages: Record<ServiceRouteKey, PageCopy> = {
     title: 'نرم‌افزار سفارشی',
     intro:
       'جایی که کار شما در هیچ نرم‌افزار آماده‌ای جا نمی‌شود، سیستم را دور خودِ کار می‌سازیم — نه اینکه کار را دور نرم‌افزار تغییر بدهید.',
+    blurb: 'وقتی قالب آماده کم می‌آورد و سیستم باید ساخته شود',
     sections: [
       {
         heading: 'قالب آماده کجا کم می‌آورد',
@@ -85,6 +97,7 @@ const pages: Record<ServiceRouteKey, PageCopy> = {
     title: 'اپلیکیشن موبایل',
     intro:
       'اپلیکیشن برای کاری است که کاربر مرتب و روی موبایل انجام می‌دهد. برای بقیهٔ کارها، سایتی که روی موبایل درست کار کند کافی است.',
+    blurb: 'کجا اپلیکیشن لازم است و کجا لازم نیست',
     sections: [
       {
         heading: 'اول این را بپرسید',
@@ -110,6 +123,7 @@ const pages: Record<ServiceRouteKey, PageCopy> = {
     title: 'چه چیزی تحویل می‌گیرید',
     intro:
       'فهرستش در صفحهٔ اصلی آمده. اینجا می‌گوییم هر کدام شش ماه بعد، وقتی مشکلی پیش بیاید، دقیقاً به چه کارتان می‌آید.',
+    blurb: 'هر چیزی که در پایان کار به نام شما تحویل می‌شود',
     sections: [
       {
         heading: 'کد منبع، به نام خودتان',
@@ -137,7 +151,7 @@ const pages: Record<ServiceRouteKey, PageCopy> = {
   /* The case study. Empty for a different reason than the four above: they are
      waiting on copy, this is waiting on a real project with a real measurement.
      Do not write it from imagination — see src/content/routes.ts. */
-  work: { title: '', intro: '', sections: [] },
+  work: { title: '', intro: '', blurb: '', sections: [] },
 };
 
 /**
@@ -450,6 +464,22 @@ export const fa = {
     brandName: 'بیزینکس',
     skipToContent: 'رفتن به محتوای اصلی',
     mainNav: 'ناوبری اصلی',
+
+    /* The header menu and the service pages' furniture. All of it is chrome —
+     * labels on controls and on structure — so the same note applies as to the
+     * rest of this block: standard Persian conventions, NEEDS NATIVE REVIEW.
+     *
+     * `servicePages` names the menu for a screen reader; the visible trigger is
+     * the nav's own «خدمات». `servicesOverview` is the row inside the menu that
+     * goes back to the home page's services section, and it has to read as a
+     * different destination from the four pages under it — the reason it says
+     * «در یک نگاه» rather than repeating the word خدمات on its own. */
+    servicePages: 'صفحه‌های خدمات',
+    servicesOverview: 'خدمات، در یک نگاه',
+    breadcrumb: 'مسیر صفحه',
+    home: 'صفحهٔ اصلی',
+    onThisPage: 'در این صفحه',
+    otherPages: 'صفحه‌های دیگر',
     emailUs: 'ارسال ایمیل به بیزینکس',
     skipIntro: 'رد کردن',
     switchToDark: 'حالت تیره',
@@ -495,6 +525,10 @@ export const emptyCopySlots = (key: RouteKey): string[] => {
 
   if (page.title === '') empty.push('title');
   if (page.intro === '') empty.push('intro');
+  // The blurb is the only thing the header menu and the cross-links have to
+  // describe this page with. A published page without one is a menu row that
+  // is a bare title, which is the state this feature exists to replace.
+  if (page.blurb === '') empty.push('blurb');
 
   // A service page with no body is a thin page, which is worse than no page:
   // it competes with the home page for the same terms and wins neither.
