@@ -40,6 +40,14 @@ export { jsonLdScript };
 export { emptyCopySlots } from './content/fa';
 
 /**
+ * The same guard, for the emphasis marks: every phrase the page draws on has to
+ * still be inside the sentence it points at. Exported here so the prerender has
+ * one module to import — see src/content/emphasis.ts for why a mark going
+ * missing has to be a build failure rather than a silently plain sentence.
+ */
+export { unmatchedMarks } from './content/emphasis';
+
+/**
  * Every page this build should emit, in one array, so the script never has to
  * restate the route table. Drafts are already filtered out — see
  * src/content/routes.ts.

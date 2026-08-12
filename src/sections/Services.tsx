@@ -1,6 +1,8 @@
+import { Marked } from '../components/Marked';
 import { Section } from '../components/Section';
 import { SectionHeader } from '../components/SectionHeader';
 import { ServiceIcon, type ServiceIconName } from '../components/ServiceIcon';
+import { emphasis } from '../content/emphasis';
 import { fa } from '../content/fa';
 import { SECTION_IDS, SECTION_INDEX } from '../content/site';
 
@@ -23,7 +25,11 @@ export const Services = () => (
               had these inverted, so the only place a service was named was a
               muted line styled as the least important thing in the card. */}
           <h3 className="mt-6 text-h3 font-semibold text-ink">{item.title}</h3>
-          <p className="mt-4 text-body text-ink">{item.body}</p>
+          {/* One marked phrase per card, and it is the outcome rather than the
+              service — the heading has already named the service. */}
+          <p className="mt-4 text-body text-ink">
+            <Marked mark={emphasis.services.items[index]} />
+          </p>
         </li>
       ))}
     </ul>

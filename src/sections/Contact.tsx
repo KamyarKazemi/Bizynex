@@ -1,6 +1,8 @@
 import { Action } from '../components/Action';
+import { Marked } from '../components/Marked';
 import { Section } from '../components/Section';
 import { SectionHeader } from '../components/SectionHeader';
+import { emphasis } from '../content/emphasis';
 import { fa } from '../content/fa';
 import { SECTION_IDS, SECTION_INDEX, mailtoHref, site } from '../content/site';
 
@@ -12,7 +14,11 @@ export const Contact = () => (
   <Section id={SECTION_IDS.contact}>
     <SectionHeader index={SECTION_INDEX.contact} title={fa.contact.title} />
 
-    <p className="max-w-measure text-lead text-ink">{fa.contact.body}</p>
+    {/* The last mark on the page, and it is the one commitment a visitor can
+        check against us within a day of making it. */}
+    <p className="max-w-measure text-lead text-ink">
+      <Marked mark={emphasis.contact.body} />
+    </p>
 
     <div className="mt-10 flex flex-wrap items-center gap-x-8 gap-y-4">
       {/* The only button on the page.

@@ -1,5 +1,7 @@
+import { Marked } from '../components/Marked';
 import { Section } from '../components/Section';
 import { SectionHeader } from '../components/SectionHeader';
+import { emphasis } from '../content/emphasis';
 import { fa } from '../content/fa';
 import { SECTION_IDS, SECTION_INDEX, site } from '../content/site';
 
@@ -31,7 +33,11 @@ export const Pricing = () => (
     <SectionHeader index={SECTION_INDEX.pricing} title={fa.pricing.title} />
 
     <div className="max-w-measure">
-      <p className="text-lead text-ink">{fa.pricing.time}</p>
+      {/* The two durations are marked, and the refusal to publish a price is
+          not. Marking the refusal would make a decision look like an excuse. */}
+      <p className="text-lead text-ink">
+        <Marked mark={emphasis.pricing.time} />
+      </p>
       <p className="mt-6 text-body text-ink">{fa.pricing.money}</p>
       {/* `botLead` opens with «به جایش», so it only reads correctly directly
           after `money` refuses the range. If the bot is ever switched off, this
@@ -39,7 +45,9 @@ export const Pricing = () => (
           is why drivers is last rather than tucked in the middle. */}
       {site.telegram && <p className="mt-4 text-body text-ink">{fa.pricing.botLead}</p>}
       <p className="mt-6 text-body text-ink">{fa.pricing.drivers}</p>
-      <p className="mt-6 text-body text-ink">{fa.pricing.guarantee}</p>
+      <p className="mt-6 text-body text-ink">
+        <Marked mark={emphasis.pricing.guarantee} />
+      </p>
     </div>
   </Section>
 );

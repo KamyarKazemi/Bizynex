@@ -57,6 +57,27 @@
   initial-value: 0px;
 }
 
+/**
+ * How far the emphasis mark has drawn, in two parts.
+ *
+ * Registered for the same reason the wave radius is: an unregistered custom
+ * property is a string and a string can only jump. Two of them rather than one
+ * `background-size` transition because the rule and the wash are deliberately
+ * out of step — the line arrives first and the colour follows it in — and a
+ * single property cannot carry two timings.
+ */
+@property --mark-rule-width {
+  syntax: '<percentage>';
+  inherits: false;
+  initial-value: 0%;
+}
+
+@property --mark-wash-width {
+  syntax: '<percentage>';
+  inherits: false;
+  initial-value: 0%;
+}
+
 @layer base {
   html {
     scroll-behavior: smooth;
@@ -141,6 +162,13 @@
    * last frame. */
   :root {
     --theme-wave-feather: 96px;
+    /* Which edge a mark, and every other drawn line, starts from. Persian is
+     * the default, so the default is the right edge; the mirror is one line. */
+    --draw-from: right;
+  }
+
+  [dir='ltr'] {
+    --draw-from: left;
   }
 
   @keyframes theme-wave {
@@ -211,5 +239,103 @@
       animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;
     }
+  }
+}
+
+@layer components {
+  /* ---- The emphasis mark ------------------------------------------------
+   * A phrase the page wants read is drawn on rather than restyled: a hairline
+   * rule sweeps under it from the start edge, and the wash follows the rule in.
+   * Two layers, two timings, one gesture — a drafting pen going over a line
+   * that matters, which is the register CONTEXT.md section 7 asks for and the
+   * reason this is not a highlighter pen with a soft yellow body.
+   *
+   * Everything is painted with `background-image` rather than a pseudo-element
+   * because a marked phrase can break across lines. `box-decoration-break:
+   * clone` gives every line fragment its own copy of both layers; an absolutely
+   * positioned bar would only ever find the first fragment.
+   *
+   * The rule is the first layer, so it paints on top of the wash rather than
+   * under it. Both grow from `--draw-from`, so RTL and LTR are the same rule.
+   *
+   * Nothing here runs until `data-lit="on"` appears on an ancestor, which is
+   * what src/components/Marked.tsx sets when the phrase reaches the viewport.
+   * Before that the text is simply text — which is also exactly what a visitor
+   * with JavaScript blocked keeps, and it costs them nothing to read.
+   */
+  .mark {
+    /* Set per phrase by Marked, so a paragraph's marks arrive in reading
+       order instead of all at once. */
+    --mark-delay: 0ms;
+
+    /* The wash is a light surface in both themes, so the words on it take the
+       ink colour even inside a muted paragraph — a marked phrase is never the
+       faintest thing in its own sentence. */
+    color: var(--color-ink);
+    /* The tag is <strong>, and the mark is what carries the emphasis. Bolding
+       it as well would make a page of marked sentences read as shouting. */
+    font-weight: inherit;
+    background-repeat: no-repeat;
+    background-position: var(--draw-from) bottom, var(--draw-from) bottom;
+    background-image:
+      linear-gradient(var(--color-mark-rule), var(--color-mark-rule)),
+      linear-gradient(var(--color-mark), var(--color-mark));
+    background-size: var(--mark-rule-width) 2px, var(--mark-wash-width) 1.2em;
+    /* The wash needs to sit a little wider and a little lower than the glyphs,
+       and the negative margin gives that room back to the line so the words on
+       either side keep their spacing. */
+    padding-inline: 0.18em;
+    margin-inline: -0.18em;
+    padding-block-end: 0.12em;
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+    transition:
+      --mark-rule-width 420ms cubic-bezier(0.16, 1, 0.3, 1) var(--mark-delay),
+      --mark-wash-width 560ms cubic-bezier(0.16, 1, 0.3, 1) calc(var(--mark-delay) + 150ms);
+  }
+
+  [data-lit='on'] .mark {
+    --mark-rule-width: 100%;
+    --mark-wash-width: 100%;
+  }
+
+  /* ---- Reveal ----------------------------------------------------------
+   * Only ever applied to something that was below the fold when the page
+   * loaded — see src/components/Reveal.tsx, which refuses to hide anything a
+   * visitor could already be reading. `pending` is set by script and never by
+   * the server, so a page with no JavaScript has no hidden content in it.
+   */
+  [data-reveal='pending'] {
+    opacity: 0;
+    translate: 0 14px;
+  }
+
+  /* The transition is declared on the arriving state and nowhere else. If it
+     sat on both, the moment the block was first hidden would itself be a
+     700ms fade *out* — off screen, so nobody would see it, and the block would
+     still be mid-fade when the reader got there. */
+  [data-reveal='in'] {
+    transition:
+      opacity 700ms ease,
+      translate 700ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  /* ---- The header menu's rows ------------------------------------------
+   * Staggered on the way in so the panel reads as a list being dealt out, and
+   * unstaggered on the way out — closing is one object leaving, not five.
+   * Vertical only: nothing here needs mirroring.
+   */
+  .menu-row {
+    opacity: 0;
+    translate: 0 -6px;
+    transition:
+      opacity 260ms ease,
+      translate 260ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  [data-menu='open'] .menu-row {
+    opacity: 1;
+    translate: 0 0;
+    transition-delay: calc(var(--row, 0) * 45ms);
   }
 }

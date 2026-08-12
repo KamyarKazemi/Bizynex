@@ -1,5 +1,7 @@
+import { Marked } from '../components/Marked';
 import { Section } from '../components/Section';
 import { SectionHeader } from '../components/SectionHeader';
+import { emphasis } from '../content/emphasis';
 import { fa } from '../content/fa';
 import { SECTION_IDS, SECTION_INDEX } from '../content/site';
 
@@ -15,11 +17,19 @@ import { SECTION_IDS, SECTION_INDEX } from '../content/site';
 export const Problem = () => (
   <Section id={SECTION_IDS.problem} surface>
     <SectionHeader index={SECTION_INDEX.problem} title={fa.problem.title} />
-    <p className="max-w-measure text-lead text-ink">{fa.problem.lead}</p>
+
+    {/* The mark lands on the last clause on purpose. Everything before it is
+        the reader's own history being recited back; the mark is the first
+        thing on the page we say about it. */}
+    <p className="max-w-measure text-lead text-ink">
+      <Marked mark={emphasis.problem.lead} />
+    </p>
 
     {/* The page's spine. It is the only sentence on the site that talks about
         the site, which is exactly why it is set apart rather than run on from
         the paragraph above — a reader skimming should still catch it. */}
-    <p className="mt-8 max-w-measure text-body text-muted">{fa.problem.bridge}</p>
+    <p className="mt-8 max-w-measure text-body text-muted">
+      <Marked mark={emphasis.problem.bridge} />
+    </p>
   </Section>
 );

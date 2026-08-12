@@ -17,7 +17,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const distDir = join(root, 'dist');
 const serverDir = join(distDir, 'server');
 
-const { render, jsonLdFor, siteUrl, prerenderRoutes, emptyCopySlots } = await import(
+const { render, jsonLdFor, siteUrl, prerenderRoutes, emptyCopySlots, unmatchedMarks } = await import(
   pathToFileURL(join(serverDir, 'entry-server.js')).href
 );
 
@@ -43,6 +43,24 @@ for (const route of prerenderRoutes) {
         `in src/content/routes.ts until it exists.`,
     );
   }
+}
+
+/**
+ * The emphasis marks point into the copy by substring, so an edit to a marked
+ * sentence — a comma, a ZWNJ, a reworded clause — can leave a phrase pointing
+ * at nothing. The mark would simply not be drawn, which is invisible in a diff
+ * and invisible on the page unless you already knew it was meant to be there.
+ * Named here instead, before anything is written.
+ */
+const unmatched = unmatchedMarks();
+
+if (unmatched.length > 0) {
+  throw new Error(
+    `prerender: ${unmatched.length} emphasis phrase(s) are no longer in the copy they mark:\n` +
+      unmatched.map((entry) => `  ${entry}`).join('\n') +
+      `\nUpdate the phrase in src/content/emphasis.ts to match the edited sentence, ` +
+      `or remove it if that sentence no longer carries the point.`,
+  );
 }
 
 /**
