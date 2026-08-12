@@ -1,9 +1,11 @@
 import { useEffect, useMemo } from 'react';
 import { Action } from '../components/Action';
 import { Marked } from '../components/Marked';
+import { PageFigure } from '../components/PageFigure';
 import { Reveal } from '../components/Reveal';
 import { emphasis } from '../content/emphasis';
 import { fa } from '../content/fa';
+import { pageLayout } from '../content/pageLayout';
 import { ROUTES, servicePageRoutes, type ServiceRouteKey } from '../content/routes';
 import { CALLOUTS, mailtoHref, site } from '../content/site';
 import { removeCover } from '../hooks/introCover';
@@ -61,6 +63,7 @@ const COLUMNS = 'grid gap-y-6 lg:grid-cols-[13rem_1fr] lg:gap-x-16 lg:gap-y-12';
 export const ServicePage = ({ routeKey }: ServicePageProps) => {
   const page = fa.pages[routeKey];
   const marks = emphasis.pages[routeKey];
+  const layout = pageLayout[routeKey];
 
   /* Looked up rather than passed in: the route table already knows every
      path, and a second copy travelling down as a prop is a second place for
@@ -91,6 +94,9 @@ export const ServicePage = ({ routeKey }: ServicePageProps) => {
   // requires of its caller.
   const anchors = useMemo(() => page.sections.map((_, index) => sectionAnchor(index)), [page]);
   const activeAnchor = useActiveSection(anchors);
+  /* -1 until the reader has reached the first section, which is what keeps the
+     index's rule empty while they are still reading the opening. */
+  const activeIndex = anchors.indexOf(activeAnchor ?? '');
 
   return (
     <>
@@ -176,23 +182,31 @@ export const ServicePage = ({ routeKey }: ServicePageProps) => {
                 <div className="lg:sticky lg:top-24">
                   <p className="text-label text-muted">{fa.ui.onThisPage}</p>
 
+                  {/* The rule down the start edge fills as the reader goes,
+                      one section at a time — the index reports progress rather
+                      than only naming a position, which is the same thing the
+                      header capsule does with the sections it watches.
+
+                      It fills in whole items rather than by scroll fraction on
+                      purpose: the segments are the list items themselves, so
+                      the fill lands exactly on a boundary and nothing has to be
+                      measured for it to stay aligned. */}
                   <ol className="mt-4">
                     {page.sections.map((section, index) => {
                       const isCurrent = anchors[index] === activeAnchor;
+                      const isRead = activeIndex >= 0 && index <= activeIndex;
 
                       return (
                         <li key={index}>
                           <a
                             href={`#${anchors[index]}`}
                             aria-current={isCurrent ? 'true' : undefined}
-                            // The rule is on the start edge and it is the only
-                            // teal on this page above the fold — one indicator,
-                            // and it is the "you are here". The colour never
-                            // carries it alone: the label changes weight too.
-                            className={`flex gap-3 border-s-2 py-2 ps-3 text-label transition-colors duration-200 ${
-                              isCurrent
-                                ? 'border-accent-fill font-semibold text-ink'
-                                : 'border-rule text-muted hover:text-ink'
+                            // Colour never carries "you are here" alone — the
+                            // current item changes weight and ink as well.
+                            className={`flex gap-3 border-s-2 py-2 ps-3 text-label transition-colors duration-500 ${
+                              isRead ? 'border-accent-fill' : 'border-rule'
+                            } ${
+                              isCurrent ? 'font-semibold text-ink' : 'text-muted hover:text-ink'
                             }`}
                           >
                             <span aria-hidden="true" className="tabular-nums">
@@ -211,27 +225,75 @@ export const ServicePage = ({ routeKey }: ServicePageProps) => {
             <div>
               {/* Keyed by index because this is a fixed list of copy, not a list
                   that reorders or filters — the position is the identity. */}
-              {page.sections.map((section, index) => (
-                <Reveal key={index} className={index === 0 ? '' : 'mt-14 sm:mt-20'}>
-                  <section id={anchors[index]} className="border-t border-rule pt-6">
-                    <p aria-hidden="true" className="text-label tabular-nums text-muted">
-                      {CALLOUTS[index]}
-                    </p>
+              {page.sections.map((section, index) => {
+                const isLimit = index === layout.limitSection;
+                const figure = layout.figure?.section === index ? layout.figure.kind : null;
 
-                    {section.heading ? (
-                      <h2 className="mt-2 max-w-measure text-h2 font-semibold text-ink">
-                        {section.heading}
-                      </h2>
-                    ) : null}
-
-                    {section.body ? (
-                      <p className="mt-5 max-w-measure text-body text-ink">
-                        <Marked mark={marks.sections[index]} />
+                return (
+                  <Reveal key={index} className={index === 0 ? '' : 'mt-14 sm:mt-20'}>
+                    {/* The limit section is bounded and the others are not.
+                        It is the one section on the page that says "and here
+                        is where you should not buy this from us", and a page
+                        that argues that and then styles the argument like
+                        every other paragraph is not making it. Which section
+                        that is comes from src/content/pageLayout.ts. */}
+                    <section
+                      id={anchors[index]}
+                      // The start-edge rule is the same 2px accent the index
+                      // uses to say "here" — this block is the one the page
+                      // most wants read. Width is the reading measure plus the
+                      // block's own padding, derived rather than picked, so the
+                      // paragraph inside sits in a box its own size instead of
+                      // leaving half the block empty.
+                      className={
+                        isLimit
+                          ? 'max-w-[calc(var(--container-measure)+4rem)] rounded-card border border-rule border-s-2 border-s-accent-fill bg-surface p-6 sm:p-8'
+                          : 'border-t border-rule pt-6'
+                      }
+                    >
+                      <p
+                        aria-hidden="true"
+                        className={`text-label tabular-nums ${
+                          isLimit ? 'text-accent-text' : 'text-muted'
+                        }`}
+                      >
+                        {CALLOUTS[index]}
                       </p>
-                    ) : null}
-                  </section>
-                </Reveal>
-              ))}
+
+                      {/* The measure line from the home page's SectionHeader:
+                          the heading, then a hairline running off to the end of
+                          the row. One structural device, repeated, for the cost
+                          of a single border pixel.
+
+                          The heading links to itself so a section can be sent
+                          to someone. Its accessible name is the heading text,
+                          which is why there is no ¶ glyph beside it needing a
+                          label of its own. */}
+                      {section.heading ? (
+                        <div className="mt-2 flex items-center gap-5">
+                          <h2 className="text-h2 font-semibold text-ink">
+                            <a
+                              href={`#${anchors[index]}`}
+                              className="transition-colors duration-200 hover:text-accent-text"
+                            >
+                              {section.heading}
+                            </a>
+                          </h2>
+                          {!isLimit && <span className="h-px flex-1 bg-rule" aria-hidden="true" />}
+                        </div>
+                      ) : null}
+
+                      {section.body ? (
+                        <p className="mt-5 max-w-measure text-body text-ink">
+                          <Marked mark={marks.sections[index]} />
+                        </p>
+                      ) : null}
+
+                      {figure ? <PageFigure kind={figure} className="mt-8" /> : null}
+                    </section>
+                  </Reveal>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -240,28 +302,46 @@ export const ServicePage = ({ routeKey }: ServicePageProps) => {
         {siblings.length > 0 ? (
           <div className="border-t border-rule bg-surface">
             <div className="mx-auto max-w-page px-6 py-16 sm:px-10 sm:py-20 lg:px-16">
-              <h2 className="text-h2 font-semibold text-ink">{fa.ui.otherPages}</h2>
+              {/* On the page's grid like everything else, so this band starts
+                  on the same edge the sections above it do. */}
+              <div className={COLUMNS}>
+                <p aria-hidden="true" className="hidden lg:block" />
 
-              <ul className="mt-8 grid gap-px overflow-hidden rounded-card border border-rule bg-rule sm:grid-cols-2 lg:grid-cols-3">
-                {siblings.map(({ route, callout }) => (
-                  <li key={route.key} className="bg-paper">
-                    <a
-                      href={route.path}
-                      className="flex h-full flex-col p-6 transition-colors duration-200 hover:bg-surface"
-                    >
-                      <span aria-hidden="true" className="text-label tabular-nums text-muted">
-                        {callout}
-                      </span>
-                      <span className="mt-5 text-h3 font-semibold text-ink">
-                        {fa.pages[route.key].title}
-                      </span>
-                      <span className="mt-2 text-body text-muted">
-                        {fa.pages[route.key].blurb}
-                      </span>
-                    </a>
-                  </li>
-                ))}
-              </ul>
+                <div>
+                  <h2 className="text-h2 font-semibold text-ink">{fa.ui.otherPages}</h2>
+
+                  {/* The same anatomy as the header menu's rows — numeral,
+                      title, one line under it — because these are the same
+                      four pages. Two different presentations of one set is one
+                      set the reader has to learn twice. */}
+                  <ul className="mt-8 grid gap-px overflow-hidden rounded-card border border-rule bg-rule sm:grid-cols-2 lg:grid-cols-3">
+                    {siblings.map(({ route, callout }) => (
+                      <li key={route.key} className="bg-paper">
+                        <a
+                          href={route.path}
+                          className="group flex h-full gap-3 p-5 transition-colors duration-200 hover:bg-surface sm:p-6"
+                        >
+                          <span
+                            aria-hidden="true"
+                            className="mt-px text-label tabular-nums text-muted transition-colors duration-200 group-hover:text-accent-text"
+                          >
+                            {callout}
+                          </span>
+
+                          <span>
+                            <span className="block text-h3 font-semibold text-ink">
+                              {fa.pages[route.key].title}
+                            </span>
+                            <span className="mt-2 block text-label text-muted">
+                              {fa.pages[route.key].blurb}
+                            </span>
+                          </span>
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
             </div>
           </div>
         ) : null}
@@ -273,30 +353,43 @@ export const ServicePage = ({ routeKey }: ServicePageProps) => {
             files — this one and that one. */}
         <div className="border-t border-rule">
           <div className="mx-auto max-w-page px-6 py-16 sm:px-10 sm:py-20 lg:px-16">
-            <h2 className="max-w-measure text-h2 font-semibold text-ink">{fa.contact.title}</h2>
-
-            <p className="mt-5 max-w-measure text-lead text-ink">
-              <Marked mark={emphasis.contact.body} />
-            </p>
-
-            <div className="mt-10 flex flex-wrap items-center gap-x-8 gap-y-4">
-              {site.telegram ? (
-                <Action href={site.telegram} external>
-                  {fa.contact.botCta}
-                </Action>
-              ) : (
-                <Action href={mailtoHref}>{fa.contact.cta}</Action>
-              )}
-
-              <a
-                href={mailtoHref}
-                dir="ltr"
-                lang="en"
-                aria-label={fa.ui.emailUs}
-                className="text-body text-ink underline decoration-rule underline-offset-8 transition-colors duration-200 hover:decoration-ink"
+            <div className={COLUMNS}>
+              {/* The last callout on the page. The four sections were numbered;
+                  so is the thing to do at the end of them. */}
+              <p
+                aria-hidden="true"
+                className="border-s-2 border-transparent ps-3 text-label tabular-nums text-muted"
               >
-                {site.email}
-              </a>
+                {CALLOUTS[page.sections.length]}
+              </p>
+
+              <div>
+                <h2 className="max-w-measure text-h2 font-semibold text-ink">{fa.contact.title}</h2>
+
+                <p className="mt-5 max-w-measure text-lead text-ink">
+                  <Marked mark={emphasis.contact.body} />
+                </p>
+
+                <div className="mt-10 flex flex-wrap items-center gap-x-8 gap-y-4">
+                  {site.telegram ? (
+                    <Action href={site.telegram} external>
+                      {fa.contact.botCta}
+                    </Action>
+                  ) : (
+                    <Action href={mailtoHref}>{fa.contact.cta}</Action>
+                  )}
+
+                  <a
+                    href={mailtoHref}
+                    dir="ltr"
+                    lang="en"
+                    aria-label={fa.ui.emailUs}
+                    className="text-body text-ink underline decoration-rule underline-offset-8 transition-colors duration-200 hover:decoration-ink"
+                  >
+                    {site.email}
+                  </a>
+                </div>
+              </div>
             </div>
           </div>
         </div>

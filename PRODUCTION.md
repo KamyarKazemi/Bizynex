@@ -197,17 +197,23 @@ motion budget and some of the teal budget, deliberately and in the open.
 | `npm run check:contrast` | exit 0 — 32 pair checks, thinnest 4.30:1 |
 | `npm run check:weight` | exit 0 — worst page 55.1 KiB of 60 |
 
-| Bundle (gzipped) | Before | After |
-|---|---|---|
-| Entry chunk | 81,503 B | 84,168 B |
-| All JS except the three.js chunk | 117,382 B | 120,047 B = **117.2 KiB** (budget 120 KiB) |
+| Bundle (gzipped) | Before | After first pass | After the service-page pass |
+|---|---|---|---|
+| Entry chunk | 81,503 B | 84,168 B | 84,838 B |
+| All JS except the three.js chunk | 117,382 B | 120,047 B | 120,718 B = **117.9 KiB** (budget 120 KiB) |
 
 Note the "before" column: it is **today's** measurement of the untouched tree,
 not the 114,819 B recorded on 2026-08-10. The baseline had already drifted
-+2.5 KiB from dependency updates before any of this was written. This pass adds
-2.6 KiB and leaves 2.8 KiB of headroom, which is thin — read the budget as
-120 KiB, because 120,047 B is 47 bytes over a decimal 120 kB and the next
-feature will have to decide that question properly.
++2.5 KiB from dependency updates before any of this was written. Both passes
+together add 3.3 KiB and leave **2.1 KiB of headroom**, which is thin.
+
+⚠ **Read the budget as 120 KiB, and decide that properly before the next
+feature.** 120,718 B is under 120 KiB (122,880 B) and over a decimal 120 kB.
+`CLAUDE.md` §6 says "120 KB" and this document has always converted to KiB, so
+the KiB reading is the one in force — but it is now the only reading that
+passes, which makes it a decision rather than a formatting habit. The cheapest
+place to buy headroom back is splitting `ServicePage` out of the entry chunk:
+a home-page visitor never needs it and vice versa.
 
 ### What changed
 
@@ -255,6 +261,44 @@ feature will have to decide that question properly.
    HTML contains no hidden content, so a blocked bundle is still the finished
    page.
 
+### The second pass on the service pages, same day
+
+A follow-up brief: overhaul the four pages again, **appearance and styles only —
+no content changes**. Nothing below writes, edits, reorders or truncates a
+Persian word; every new decision lives outside `fa.ts` in
+`src/content/pageLayout.ts`, which holds no words at all.
+
+- **The limit section is no longer styled like the others.** Each page has one
+  section that says where this service does not work — `COPY-BRIEF.md` calls it
+  the beat no competitor writes — and it was rendering identically to every
+  other paragraph. It is now a bounded block on `surface`, capped at the
+  reading measure plus its own padding, with the same 2px accent rule on its
+  start edge that the index uses to say "here". `/delivery` has none and is
+  marked as having none rather than being made to have one.
+- **Section headers use the home page's measure line**: callout, heading, and a
+  hairline running off to the end of the row. One structural device, repeated.
+  Each heading is now a link to its own section, and its accessible name is the
+  heading text — which is why there is no ¶ glyph needing a label of its own.
+- **The index reports progress**, filling one section at a time as the reader
+  goes. It fills in whole items rather than by scroll fraction so the fill
+  always lands on a boundary with nothing measured.
+- **Two drawn figures**, on `/automation` and `/app` only — the two pages where
+  a picture carries an argument. Five hand-made passes above one line that
+  runs; and the fork between something opened again and again and something
+  visited once. They carry **no words**: a labelled diagram is a second piece
+  of copy written by whoever drew it. Both are `aria-hidden`, each sits in the
+  section whose paragraph is already its caption, and every path is drawn by
+  default — the stroke animation is only ever added to a figure that was off
+  screen. `pathLength="1"` is what makes a 20px tick and a 200px run take the
+  same time to draw.
+- **Every band sits on one grid.** The opening, the sections, the sibling links
+  and the closing action all start on the same edge, and the sibling links now
+  have the same anatomy as the header menu's rows, because they are the same
+  four pages and two presentations of one set is one set learned twice.
+- `useArrival` now holds the "only stage something that is off screen" logic
+  that `Reveal` and the figures both need — the third use of it, which is when
+  `CLAUDE.md` §1 says to abstract, not before.
+
 ### Verified in a real browser, not assumed
 
 Chromium, against `vite preview`, at 360 / 768 / 1440 in both themes:
@@ -264,10 +308,12 @@ Chromium, against `vite preview`, at 360 / 768 / 1440 in both themes:
 - Keyboard: Tab → «خدمات», ArrowDown → first menu row, Tab → second row, Escape
   → back on the button with `aria-expanded="false"`. The closed panel is out of
   the tab order.
-- `prefers-reduced-motion: reduce` — every mark fully drawn, no element left in
-  the pending reveal state.
-- JavaScript disabled — the page reads complete, the menu is `inert` and
+- `prefers-reduced-motion: reduce` — every mark fully drawn, all ten figure
+  strokes drawn, no element left in the pending reveal state.
+- JavaScript disabled — the page reads complete, the figures are finished
+  drawings, the section headings are still links, the menu is `inert` and
   invisible, and the footer still carries all four links.
+- Focus ring on a section heading link measured at 2px solid `#0e7a72`.
 
 Still not measured, and still needing a real deploy: Lighthouse and field Core
 Web Vitals.
