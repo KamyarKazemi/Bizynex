@@ -5,6 +5,7 @@ import { removeCover } from '../hooks/introCover';
 import { useCapabilityDetection } from '../hooks/useCapabilityDetection';
 import { Footer } from '../sections/Footer';
 import { Header } from '../sections/Header';
+import { Marked } from '../components/Marked';
 
 type ServicePageProps = {
   routeKey: ServiceRouteKey;
@@ -51,7 +52,7 @@ export const ServicePage = ({ routeKey }: ServicePageProps) => {
       </a>
 
       {/* The nav links are in-page anchors that only exist on the home page. */}
-      <Header hrefPrefix="/" />
+      <Header hrefPrefix="/" currentPath={currentPath} />
 
       <main id="main" className="bg-paper">
         <div className="mx-auto max-w-page px-6 py-20 sm:px-10 sm:py-24 lg:px-16 lg:py-32">
@@ -60,7 +61,7 @@ export const ServicePage = ({ routeKey }: ServicePageProps) => {
           ) : null}
 
           {page.intro ? (
-            <p className="mt-6 max-w-measure text-lead text-muted">{page.intro}</p>
+            <p className="mt-6 max-w-measure text-lead text-muted"><Marked>{page.intro}</Marked></p>
           ) : null}
 
           {/* Keyed by index because this is a fixed list of copy, not a list

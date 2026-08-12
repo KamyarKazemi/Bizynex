@@ -3,6 +3,7 @@ import { Action } from '../components/Action';
 import { fa } from '../content/fa';
 import { HERO_ID, SECTION_IDS } from '../content/site';
 import { HeroCanvas } from '../three/HeroCanvas';
+import { Marked } from '../components/Marked';
 
 /**
  * A single framed panel: the woven figure standing in front of the name.
@@ -81,7 +82,7 @@ export const Hero = () => {
             }
           >
             <h1 className="max-w-measure text-display font-semibold text-ink">{fa.hero.title}</h1>
-            <p className="mt-4 max-w-measure text-lead text-ink/80">{fa.hero.subtitle}</p>
+            <p className="mt-4 max-w-measure text-lead text-ink/80"><Marked>{fa.hero.subtitle}</Marked></p>
           </div>
         </div>
 

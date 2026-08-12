@@ -73,7 +73,7 @@ export const HomePage = () => {
         {fa.ui.skipToContent}
       </a>
 
-      <Header />
+      <Header currentPath="/" />
 
       <main id="main">
         {/* Render order is the reading order the copy was written against, and

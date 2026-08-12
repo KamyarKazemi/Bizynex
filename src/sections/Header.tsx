@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { fa } from '../content/fa';
+import { publishedRoutes, type Route, type ServiceRouteKey } from '../content/routes';
 import { HERO_ID, NAV_LINKS } from '../content/site';
 import { useActiveSection } from '../hooks/useActiveSection';
 import { useAppSelector } from '../store';
@@ -109,6 +110,38 @@ type Capsule = {
  * at all — a control that collapses out of reach is a different control, not a
  * calmer one.
  */
+type PageRoute = Route & { readonly key: ServiceRouteKey };
+
+/**
+ * The pages the menu offers. Home is excluded — the logo and the section links
+ * already go there — and drafts are excluded by `publishedRoutes` before this
+ * ever sees them.
+ */
+const menuRoutes = (): readonly PageRoute[] =>
+  publishedRoutes().filter((route): route is PageRoute => route.key !== 'home');
+
+/**
+ * The chevron, drawn rather than imported.
+ *
+ * `react-icons` lives only in the overture's lazy chunk. Importing a glyph here
+ * would pull the whole package back onto the critical path for every visit, to
+ * draw two lines. They are two 45-degree strokes, which is the construction
+ * system in CONTEXT.md section 3 — the one shape this site is allowed to draw
+ * from first principles.
+ */
+const Chevron = ({ open }: { open: boolean }) => (
+  <svg
+    aria-hidden="true"
+    viewBox="0 0 10 6"
+    className={`h-1.5 w-2.5 transition-transform duration-200 ${open ? '-scale-y-100' : ''}`}
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+  >
+    <path d="M1 1L5 5L9 1" />
+  </svg>
+);
+
 type HeaderProps = {
   /**
    * Prepended to every nav href. The three links are in-page anchors and the
@@ -118,15 +151,28 @@ type HeaderProps = {
    * and the URL clean.
    */
   hrefPrefix?: string;
+  /** The path of the page this header is on, so the menu can mark it. */
+  currentPath?: string;
 };
 
-export const Header = ({ hrefPrefix = '' }: HeaderProps) => {
+export const Header = ({ hrefPrefix = '', currentPath }: HeaderProps) => {
   const prefersReducedMotion = useAppSelector(selectReducedMotion);
   const activeId = useActiveSection(OBSERVED_IDS);
   const [isOpen, setIsOpen] = useState(false);
+  /**
+   * Three states rather than a boolean, because a menu that unmounts the instant
+   * it is dismissed cannot animate out — it simply vanishes, which reads as a
+   * glitch rather than a surface closing. `closing` keeps it mounted for exactly
+   * as long as the exit takes.
+   */
+  const [menuState, setMenuState] = useState<'closed' | 'open' | 'closing'>('closed');
+  const isMenuOpen = menuState === 'open';
+  const closeTimer = useRef(0);
   const [capsule, setCapsule] = useState<Capsule | null>(null);
   const pillRef = useRef<HTMLDivElement>(null);
   const stripRef = useRef<HTMLUListElement>(null);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const pages = menuRoutes();
 
   // Undefined in the hero, and while passing any section the nav does not link
   // to — OBSERVED_IDS watches the hero plus the three nav targets and nothing
@@ -134,7 +180,32 @@ export const Header = ({ hrefPrefix = '' }: HeaderProps) => {
   // The pill only condenses when it has a section to name, so those stretches
   // are simply the open state — no fallback, and nothing claimed that is untrue.
   const activeLink = NAV_LINKS.find((link) => link.href.slice(1) === activeId);
-  const isCondensed = capsule !== null && !isOpen && !prefersReducedMotion;
+  const openMenu = () => {
+    window.clearTimeout(closeTimer.current);
+    setMenuState('open');
+  };
+
+  // Unmount after the exit, not before it. The duration matches the one in
+  // index.css; a reduced-motion visitor has no exit to wait for, so the panel
+  // goes straight to closed rather than sitting there for 140ms doing nothing.
+  // Stable, because the document-level listeners below depend on it and a fresh
+  // function each render would tear down and rebuild them on every keystroke.
+  const closeMenu = useCallback(() => {
+    window.clearTimeout(closeTimer.current);
+    setMenuState((state) => {
+      if (state === 'closed') return state;
+      if (prefersReducedMotion) return 'closed';
+      closeTimer.current = window.setTimeout(() => setMenuState('closed'), 140);
+      return 'closing';
+    });
+  }, [prefersReducedMotion]);
+
+  useEffect(() => () => window.clearTimeout(closeTimer.current), []);
+
+  // The menu holds the pill open too. A pill that condensed out from under an
+  // open menu would leave the menu hanging off a control that had changed shape
+  // and moved while the reader was reading it.
+  const isCondensed = capsule !== null && !isOpen && !isMenuOpen && !prefersReducedMotion;
 
   useEffect(() => {
     const strip = stripRef.current;
@@ -176,13 +247,23 @@ export const Header = ({ hrefPrefix = '' }: HeaderProps) => {
   // Escape, and a tap anywhere else. Between them they cover the ways out that a
   // mouse's leave and a keyboard's blur do not — which is every touch device.
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen && !isMenuOpen) return;
 
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setIsOpen(false);
+      if (event.key !== 'Escape') return;
+      setIsOpen(false);
+      // Escape from a menu has to put focus back on the control that opened it,
+      // or the reader is returned to the top of the document — the same defect
+      // the overture's pull button had.
+      if (isMenuOpen) {
+        closeMenu();
+        menuButtonRef.current?.focus();
+      }
     };
     const onPointerDown = (event: PointerEvent) => {
-      if (!pillRef.current?.contains(event.target as Node)) setIsOpen(false);
+      if (pillRef.current?.contains(event.target as Node)) return;
+      setIsOpen(false);
+      closeMenu();
     };
 
     document.addEventListener('keydown', onKeyDown);
@@ -191,7 +272,7 @@ export const Header = ({ hrefPrefix = '' }: HeaderProps) => {
       document.removeEventListener('keydown', onKeyDown);
       document.removeEventListener('pointerdown', onPointerDown);
     };
-  }, [isOpen]);
+  }, [isOpen, isMenuOpen, closeMenu]);
 
   return (
     <>
@@ -217,7 +298,9 @@ export const Header = ({ hrefPrefix = '' }: HeaderProps) => {
           onBlur={(event) => {
             // Focus moving between two controls inside the pill is not focus
             // leaving it, so the pill must not close underneath the reader.
-            if (!event.currentTarget.contains(event.relatedTarget)) setIsOpen(false);
+            if (event.currentTarget.contains(event.relatedTarget)) return;
+            setIsOpen(false);
+            closeMenu();
           }}
           className="pointer-events-auto flex items-center rounded-full border border-rule bg-paper p-1"
         >
@@ -294,6 +377,70 @@ export const Header = ({ hrefPrefix = '' }: HeaderProps) => {
           </div>
 
           <div aria-hidden="true" className="mx-0.5 h-5 w-px bg-rule sm:mx-1" />
+
+          {/* The page menu.
+
+              Deliberately not part of the strip above. That strip and the
+              capsule travelling across it are one thing — a readout of where in
+              the home page you are — and the four pages below are a different
+              thing entirely: places to go. Hanging both off one control would
+              make the capsule mean two things, and it would also drag the menu
+              inside the window's `overflow-hidden`, where it would be clipped.
+
+              It opens on click rather than hover. Hover already opens the pill,
+              and opening two things with one gesture gives a reader no way to
+              reach the first without triggering the second. Click is also the
+              only one of the three inputs that works on touch. */}
+          {pages.length > 0 && (
+            <div className="relative">
+              <button
+                ref={menuButtonRef}
+                type="button"
+                aria-expanded={isMenuOpen}
+                aria-haspopup="true"
+                onClick={() => (isMenuOpen ? closeMenu() : openMenu())}
+                className="flex min-h-11 items-center gap-1.5 whitespace-nowrap px-2 text-label text-ink-soft transition-colors duration-200 hover:text-accent-text sm:px-3"
+              >
+                {fa.ui.pagesMenu}
+                <Chevron open={isMenuOpen} />
+              </button>
+
+              {menuState !== 'closed' && (
+                // The padding rather than a margin is load-bearing: it makes the
+                // gap between pill and panel part of the panel, so a pointer
+                // crossing it never leaves the pill and never closes anything.
+                <div className="absolute end-0 top-full pt-2">
+                  <nav
+                    aria-label={fa.ui.pagesMenu}
+                    data-menu-panel
+                    data-state={menuState}
+                    className="min-w-max rounded-card border border-rule bg-paper p-1.5"
+                  >
+                    <ul>
+                      {pages.map((route) => {
+                        const isCurrent = route.path === currentPath;
+
+                        return (
+                          <li key={route.key}>
+                            <a
+                              href={route.path}
+                              aria-current={isCurrent ? 'page' : undefined}
+                              onClick={closeMenu}
+                              className={`flex min-h-11 items-center whitespace-nowrap rounded-card px-3 text-label transition-colors duration-200 hover:text-accent-text ${
+                                isCurrent ? 'text-ink' : 'text-ink-soft'
+                              }`}
+                            >
+                              {fa.pages[route.key].title}
+                            </a>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </nav>
+                </div>
+              )}
+            </div>
+          )}
 
           <ThemeToggle className="p-1.5 sm:p-2" />
         </div>

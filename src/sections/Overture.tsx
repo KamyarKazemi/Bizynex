@@ -5,6 +5,7 @@ import { fa } from '../content/fa';
 import { liftCover } from '../hooks/introCover';
 import { OvertureCanvas } from '../three/OvertureCanvas';
 import type { OverturePhase } from '../three/OvertureScene';
+import { OVERTURE_LEAVE_MS, OVERTURE_REVEAL_AT_MS } from '../three/handoff';
 
 /**
  * How long the ring takes to fill once the light is on.
@@ -14,7 +15,7 @@ import type { OverturePhase } from '../three/OvertureScene';
  * takes over. Turning the light back off stops the clock, and reaching for any
  * control pauses it.
  */
-const COUNTDOWN_MS = 6500;
+const COUNTDOWN_MS = 2000;
 /**
  * The exit, and the moment inside it when the page appears.
  *
@@ -25,8 +26,8 @@ const COUNTDOWN_MS = 6500;
  * overlap is the entire transition — reveal at the end and it is a fade with
  * extra steps.
  */
-const LEAVE_MS = 1750;
-const REVEAL_AT_MS = 820;
+const LEAVE_MS = OVERTURE_LEAVE_MS;
+const REVEAL_AT_MS = OVERTURE_REVEAL_AT_MS;
 
 /**
  * How long a visitor may be held in front of an empty room before we give up on

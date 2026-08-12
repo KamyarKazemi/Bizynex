@@ -1,4 +1,4 @@
-import { fa } from './fa';
+import { fa, plain } from './fa';
 import { SECTION_IDS, site } from './site';
 
 /**
@@ -250,7 +250,11 @@ const graph = [
 
 const wrap = (nodes: unknown[]) =>
   `<script type="application/ld+json">${escapeForScriptTag(
-    JSON.stringify({ '@context': 'https://schema.org', '@graph': nodes }),
+    /* Stripped here, on the finished JSON, rather than field by field. The
+       graph pulls forty-odd strings out of fa.ts and any one of them may gain
+       an emphasis mark later; a central pass cannot be forgotten the way a
+       per-field plain() call can. */
+    plain(JSON.stringify({ '@context': 'https://schema.org', '@graph': nodes })),
   )}</script>`;
 
 /** The full `<script type="application/ld+json">` element, ready to paste. */

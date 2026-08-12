@@ -213,3 +213,81 @@
     }
   }
 }
+
+/* -------------------------------------------------------------------------
+ * The marked phrase — see src/components/Marked.tsx and CONTEXT.md section 7.
+ *
+ * The rule lives here rather than in utility classes because its resting state
+ * has to be inverted under reduced motion, and a media query cannot be
+ * expressed in the class list on the element.
+ * ------------------------------------------------------------------------- */
+@layer components {
+  [data-mark-rule] {
+    transform: scaleX(0);
+    /* The inline start. The site is RTL, so the rule draws right-to-left, the
+       same direction the sentence is read. Mirror this if the site is ever
+       mirrored — `transform-origin` has no logical keyword to do it for us. */
+    transform-origin: right;
+    transition: transform 220ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  [data-mark-rule][data-drawn] {
+    transform: scaleX(1);
+  }
+
+  /* Present from the start, with no entrance to opt out of. The global
+     transition flattening above would freeze the rule at scaleX(0) and simply
+     delete it, so the resting state has to be reversed rather than the
+     animation merely disabled. */
+  @media (prefers-reduced-motion: reduce) {
+    [data-mark-rule] {
+      transform: scaleX(1);
+    }
+  }
+}
+
+/* -------------------------------------------------------------------------
+ * The header's page menu — see src/sections/Header.tsx.
+ *
+ * A surface that appears and disappears instantly reads as a rendering glitch
+ * rather than as something opening. Both directions are inside CONTEXT.md
+ * section 7's 150-250ms band, and the exit is quicker than the entrance: a
+ * reader who has decided to dismiss something wants it gone, not eased away.
+ *
+ * `transform-origin` is the top inline-end corner — the corner nearest the
+ * button it hangs from — so it scales out of its own trigger rather than
+ * appearing to inflate from nowhere.
+ * ------------------------------------------------------------------------- */
+@layer components {
+  [data-menu-panel] {
+    transform-origin: top left; /* RTL: the inline end. Mirror if the site is. */
+  }
+
+  [data-menu-panel][data-state='open'] {
+    /* `backwards`, never `both`. `both` holds the final keyframe forever — and
+       when the animation does not run at all (a background tab, a throttled
+       renderer) that final state is the `from`, so the menu would stay at
+       opacity 0 and simply never appear. `backwards` applies the entrance and
+       then hands the element back to its own styles, so a menu that cannot
+       animate is still a menu. */
+    animation: menu-in 180ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  }
+
+  [data-menu-panel][data-state='closing'] {
+    animation: menu-out 140ms ease-in forwards;
+  }
+
+  @keyframes menu-in {
+    from {
+      opacity: 0;
+      transform: translateY(-4px) scale(0.97);
+    }
+  }
+
+  @keyframes menu-out {
+    to {
+      opacity: 0;
+      transform: translateY(-2px) scale(0.98);
+    }
+  }
+}

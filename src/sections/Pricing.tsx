@@ -2,6 +2,7 @@ import { Section } from '../components/Section';
 import { SectionHeader } from '../components/SectionHeader';
 import { fa } from '../content/fa';
 import { SECTION_IDS, SECTION_INDEX, site } from '../content/site';
+import { Marked } from '../components/Marked';
 
 /**
  * Money and time, in the open, instead of at FAQ position five.
@@ -39,7 +40,7 @@ export const Pricing = () => (
           is why drivers is last rather than tucked in the middle. */}
       {site.telegram && <p className="mt-4 text-body text-ink">{fa.pricing.botLead}</p>}
       <p className="mt-6 text-body text-ink">{fa.pricing.drivers}</p>
-      <p className="mt-6 text-body text-ink">{fa.pricing.guarantee}</p>
+      <p className="mt-6 text-body text-ink"><Marked>{fa.pricing.guarantee}</Marked></p>
     </div>
   </Section>
 );

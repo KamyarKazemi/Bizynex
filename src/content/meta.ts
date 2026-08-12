@@ -1,4 +1,4 @@
-import { fa } from './fa';
+import { fa, plain } from './fa';
 import type { Route } from './routes';
 import { site } from './site';
 
@@ -59,8 +59,8 @@ export const pageMetaFor = (route: PageRoute): PageMeta | null => {
   const page = fa.pages[route.key];
 
   return {
-    title: page.title,
-    description: page.intro,
+    title: plain(page.title),
+    description: plain(page.intro),
     canonical: canonicalFor(route),
   };
 };

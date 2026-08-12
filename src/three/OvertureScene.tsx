@@ -39,7 +39,7 @@ import {
 } from 'three';
 import type { OvertureAudio } from '../audio/overture';
 import { WOVEN_FIGURE } from './geometry';
-import { readLatticePanelRect } from './handoff';
+import { OVERTURE_LEAVE_MS, readLatticePanelRect } from './handoff';
 import { createRope, ROPE_POINTS } from './rope';
 import { createWordmarkTexture } from './wordmark';
 
@@ -1106,7 +1106,13 @@ const OvertureScene = ({
       exitRect = readLatticePanelRect();
       aimAtPage();
 
-      track(gsap.timeline())
+      // Every duration below is written at the speed the exit was choreographed
+      // at. `timeScale` then compresses the whole thing into whatever
+      // OVERTURE_LEAVE_MS currently is, so the tweens stay readable as a piece
+      // of choreography and there is still exactly one number controlling how
+      // long a visitor waits. Scaling the timeline also keeps every tween's
+      // relative position intact, which hand-editing six durations would not.
+      const exit = track(gsap.timeline())
         .to(
           camera.position,
           { x: -towardPage * 5.2, z: 9.4, duration: 1.5, ease: 'power2.inOut' },
@@ -1127,6 +1133,12 @@ const OvertureScene = ({
         .to(bulbMaterial, { emissiveIntensity: 0, duration: 0.7 }, 0.55)
         .to(beamMaterial.uniforms.uOpacity, { value: 0, duration: 0.5 }, 0.2)
         .to(dustMaterial.uniforms.uLight, { value: 0, duration: 0.6 }, 0.25);
+
+      // Read the natural span rather than hard-coding 1.5s: edit a tween above
+      // and this still lands on time, which is the whole point of putting the
+      // number in handoff.ts.
+      const natural = exit.duration();
+      if (natural > 0) exit.timeScale(natural / (OVERTURE_LEAVE_MS / 1000));
     };
 
     /* -- Loop ----------------------------------------------------------- */
