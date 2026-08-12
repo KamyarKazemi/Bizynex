@@ -179,6 +179,101 @@ draft: it is waiting on a real measurement, not on words.
 
 ---
 
+## 3c. The 2026-08-12 pass — emphasis, the header menu, the service pages
+
+Three changes, asked for together, and the brief was explicitly *not* to stay
+inside the motion restraint in `CLAUDE.md` §8 and `CONTEXT.md` §7. The hard
+constraints were kept: self-hosted, RTL-first, reduced motion honoured, contrast
+floor measured, nothing readable withheld behind script. What was spent is the
+motion budget and some of the teal budget, deliberately and in the open.
+
+**Measured after, not estimated** (2026-08-12):
+
+| Command | Result |
+|---|---|
+| `npx tsc -b` | exit 0 |
+| `npx eslint .` | exit 0 |
+| `npm run build` | exit 0 |
+| `npm run check:contrast` | exit 0 — 32 pair checks, thinnest 4.30:1 |
+| `npm run check:weight` | exit 0 — worst page 55.1 KiB of 60 |
+
+| Bundle (gzipped) | Before | After |
+|---|---|---|
+| Entry chunk | 81,503 B | 84,168 B |
+| All JS except the three.js chunk | 117,382 B | 120,047 B = **117.2 KiB** (budget 120 KiB) |
+
+Note the "before" column: it is **today's** measurement of the untouched tree,
+not the 114,819 B recorded on 2026-08-10. The baseline had already drifted
++2.5 KiB from dependency updates before any of this was written. This pass adds
+2.6 KiB and leaves 2.8 KiB of headroom, which is thin — read the budget as
+120 KiB, because 120,047 B is 47 bytes over a decimal 120 kB and the next
+feature will have to decide that question properly.
+
+### What changed
+
+1. **Important phrases draw themselves on.** A teal rule sweeps under a marked
+   phrase and a wash follows it in, once, when the reader reaches it. Two
+   registered custom properties rather than one `background-size` transition,
+   because the rule and the wash are deliberately out of step.
+
+   The phrase list is `src/content/emphasis.ts` and **`fa.ts` was not touched by
+   it**. That is not tidiness: `jsonLd.ts` and `meta.ts` copy those same strings
+   into the structured data and into `<title>`, so markup in the copy would end
+   up in a search result. Each entry carries its sentence *and* its phrases, and
+   `unmatchedMarks()` — wired into the prerender the same way `emptyCopySlots`
+   is — fails the build and names any phrase a copy edit has left pointing at
+   nothing. A ZWNJ is invisible in a diff; this is what catches it.
+
+   `--color-mark` is a flat colour rather than teal at low alpha, so `ink` on it
+   is a pair `check:contrast` can measure: 12.18:1 light, 9.46:1 dark.
+
+2. **The header capsule opens the four service pages.** «خدمات» is now a
+   `<button aria-expanded>`; the destination it used to have is the first row
+   inside the panel. The capsule still means one thing — where you are — and
+   the panel is a second surface below it, so the note in `Footer.tsx` that
+   argued against this is answered rather than ignored.
+
+   The whole panel is in the prerendered HTML of every page, `inert` when
+   closed, which is why every page now carries a real link to every other page
+   in its markup. Closed is `opacity-0`, **not** `invisible`: `visibility` is
+   transitionable and computes as `hidden` for the first frame, so the
+   down-arrow's "open, then move focus in" would have called `focus()` on an
+   element the browser still considered unfocusable. That cost an hour; it is
+   commented in place.
+
+3. **The four service pages are documentation pages now.** They were an `h1`
+   and three paragraphs. They are now: a breadcrumb matching the
+   `BreadcrumbList` exactly, a callout numeral in the margin, a numbered index
+   that follows you down the page on `useActiveSection` — the same hook the
+   header capsule uses — numbered sections, the other three pages, and the one
+   action. The opening band and the body sit on the same declared grid, so the
+   `h1` and the first `h2` share a start edge to the pixel (measured: 984.5px
+   at 1440).
+
+   `Reveal` never hides anything that was on screen when the page loaded, and
+   the hidden state is only ever added by script in a browser. Server-rendered
+   HTML contains no hidden content, so a blocked bundle is still the finished
+   page.
+
+### Verified in a real browser, not assumed
+
+Chromium, against `vite preview`, at 360 / 768 / 1440 in both themes:
+
+- Zero console errors or warnings on `/`, `/automation` and `/delivery` at all
+  three widths; zero horizontal overflow.
+- Keyboard: Tab → «خدمات», ArrowDown → first menu row, Tab → second row, Escape
+  → back on the button with `aria-expanded="false"`. The closed panel is out of
+  the tab order.
+- `prefers-reduced-motion: reduce` — every mark fully drawn, no element left in
+  the pending reveal state.
+- JavaScript disabled — the page reads complete, the menu is `inert` and
+  invisible, and the footer still carries all four links.
+
+Still not measured, and still needing a real deploy: Lighthouse and field Core
+Web Vitals.
+
+---
+
 ## 4. Blocked on a human — an agent cannot do these
 
 Ordered by cost of getting them wrong.
@@ -188,6 +283,16 @@ Ordered by cost of getting them wrong.
       before its overhaul. `COPY-BRIEF.md` lists the four sentences to check
       hardest and the four things the draft is least sure about. `/delivery` is
       the strongest page; correct that one first.
+- [ ] **The emphasis marks are an editorial call, not a technical one.**
+      `src/content/emphasis.ts` decides which words the page leans on, and
+      emphasis is voice. No Persian was written or altered to build it, but
+      choosing what to emphasise is a founder's judgement. `COPY-BRIEF.md` has
+      the two rules that were held while choosing, and moving a mark is a
+      one-line edit.
+- [ ] **Six new strings.** Four menu blurbs, one per service page, plus six
+      `fa.ui` labels. The blurbs are new Persian written by Claude under the
+      same «Claude drafts, founder corrects» arrangement as the pages
+      themselves — they are listed in `COPY-BRIEF.md` for a read-through.
 - [ ] **The case study (`/work`).** Blocked on a real measured outcome, not on
       copy. `COPY-BRIEF.md` §05 lists what to capture while the next project
       runs rather than reconstructing it afterwards.

@@ -108,6 +108,53 @@ outranks an impressive vague one.
 
 ---
 
+## New since the pages were written — two things need your eye
+
+### 1. Which phrases the page raises its voice on
+
+Important phrases are now drawn on as the reader reaches them: a teal rule
+sweeps under the words and a wash follows it in. The list of phrases is
+`src/content/emphasis.ts`, and **no Persian was written, edited or reordered to
+make it** — each entry is a substring of a sentence you already have, and the
+build fails and names the phrase if a copy edit ever leaves one pointing at
+nothing.
+
+What needs a founder is not the mechanism, it is the **editorial call**: these
+are the words the page emphasises, and emphasis is voice. Read a marked
+paragraph and ask whether the marked words are the ones you would lean on.
+Two rules were held while choosing them, and both are worth keeping:
+
+- One phrase per paragraph. Two only where the paragraph makes two points
+  (`fa.pricing.time` is the one that does — the two durations).
+- Never a whole sentence, never a heading, and never an adjective. «سریع» marks
+  nothing; «سه تا شش هفته» marks the promise.
+
+Moving a mark is a one-line edit. Removing one is deleting a string.
+
+### 2. Six new strings, all short
+
+Four are the menu blurbs — one line per service page, shown in the header menu
+and on the sibling pages' cross-links. They are new Persian and they are mine,
+so they need the same read-through the pages did:
+
+| Page | Blurb |
+|---|---|
+| `/automation` | کار تکراری هفتگی که لازم نیست دستی انجام شود |
+| `/software` | وقتی قالب آماده کم می‌آورد و سیستم باید ساخته شود |
+| `/app` | کجا اپلیکیشن لازم است و کجا لازم نیست |
+| `/delivery` | هر چیزی که در پایان کار به نام شما تحویل می‌شود |
+
+Each is meant to say what the page *argues*, not to repeat its title — they are
+read directly under it. None is a truncated first sentence, deliberately: «…» in
+a menu is a promise that something was left out.
+
+The rest are interface chrome in `fa.ui` — «صفحه‌های خدمات»، «خدمات، در یک نگاه»،
+«مسیر صفحه»، «صفحهٔ اصلی»، «در این صفحه»، «صفحه‌های دیگر». Standard conventions,
+same as the rest of that block, and the same standing note applies: they were
+not in the brief and need a native review before launch.
+
+---
+
 ## Still unwritten, and small
 
 **The home meta description** is 188 characters; Google truncates a Persian
