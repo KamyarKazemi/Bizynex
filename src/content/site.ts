@@ -55,8 +55,12 @@ export const site = {
    * Canonical origin. No trailing slash — every URL built from it adds its own.
    * Used by the sitemap, the JSON-LD @id, and the og:url in index.html; if this
    * changes, public/robots.txt and index.html change with it.
+   *
+   * The apex, not `www`. Both are attached to the project and `vercel.json`
+   * redirects `www` here, so there is exactly one address a crawler is ever
+   * told about.
    */
-  url: 'https://bizynex.vercel.app',
+  url: 'https://bizynex.ir',
 
   email: 'bizynexservices@gmail.com',
 

@@ -1,7 +1,7 @@
-# bizynex.vercel.app
+# bizynex.ir
 # One page, nothing private. Everything is crawlable.
 
 User-agent: *
 Allow: /
 
-Sitemap: https://bizynex.vercel.app/sitemap.xml
+Sitemap: https://bizynex.ir/sitemap.xml

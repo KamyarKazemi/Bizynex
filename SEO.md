@@ -6,16 +6,16 @@ nothing here overrides either.
 
 Last audit: 2026-08-07, against the current `main` working tree.
 
-> **2026-08-09 — the origin decision changed.** This document previously assumed
-> `bizynex.ir` was the production domain. It is not, and it is not attached to
-> this project. **The production origin is `https://bizynex.vercel.app`** — the
-> Vercel project alias the site is actually served from. Canonicalising to a
-> hostname nobody controls tells Google to index a URL that does not resolve,
-> which de-indexes the page; that is why this was corrected rather than left to
-> the domain purchase. `src/content/site.ts`, `index.html`, `public/robots.txt`
-> and `vercel.json` now all say `bizynex.vercel.app`, and the `www` → apex
-> redirect has been removed as dead config. A custom domain is future work, not
-> a launch blocker — see §4.
+> **2026-08-13 — the domain arrived. The origin is `https://bizynex.ir`.**
+> This has now moved twice, so the history is worth keeping straight: the
+> document originally assumed `bizynex.ir`, that was corrected on 2026-08-09 to
+> `bizynex.vercel.app` because the domain was not attached to the project, and
+> it is now `bizynex.ir` again because it *is* — nameservers pointed at
+> `ns1/ns2.vercel-dns.com`. `src/content/site.ts`, `index.html`,
+> `public/robots.txt` and `vercel.json` all say `bizynex.ir`, and the `www` →
+> apex redirect is back. The rule the two corrections share: **the canonical
+> may only ever name a hostname that actually resolves to this site.** See §4
+> for what a human still has to do in Search Console.
 
 ---
 
@@ -62,14 +62,20 @@ slow one.
 
 Also set:
 
-- **No redirects.** An earlier version of this config carried a `www` → apex 301
-  for a custom domain. That domain is not attached to the project, so the rule
-  could never fire; it has been removed rather than left as config that names a
-  hostname nobody serves. The site has one hostname —
-  `bizynex.vercel.app` — so there is no duplicate-content split to resolve. If a
-  custom domain is ever added, reinstate the redirect **and** set the apex as
-  the primary domain in the Vercel dashboard, so the rule and the dashboard
+- **One redirect**, `www.bizynex.ir` → the apex, 301. It is back because the
+  domain it names is now attached to the project; between 2026-08-09 and
+  2026-08-13 it was deliberately absent, because a rule naming a hostname
+  nobody serves is dead config that reads as working config. Set the apex as
+  the primary domain in the Vercel dashboard too, so the rule and the dashboard
   agree.
+
+  **Not yet redirected: `bizynex.vercel.app`.** That alias still serves the
+  site, which is deliberate — it is the address that works while `.ir`
+  nameservers propagate, and redirecting it to a host that is not resolving yet
+  would take the site off the internet. It costs nothing in the meantime: every
+  page it serves carries a canonical pointing at `bizynex.ir`, which is what
+  Google acts on. Add the second redirect once Vercel shows the domain as
+  Valid Configuration — the block is written out in `PRODUCTION.md` §1.
 - **Security headers** (`nosniff`, `Referrer-Policy`, `X-Frame-Options`,
   `Permissions-Policy`, HSTS). Not ranking factors, but HSTS removes an HTTP→HTTPS
   redirect hop on repeat visits, which is a real latency win.
@@ -235,9 +241,10 @@ Ordered by cost of getting them wrong.
 - [ ] **Replace `public/brand/favicon.svg`.** It is labelled PLACEHOLDER in its
       own source — on-brand geometry, but not the logo mark. Then re-run
       `npm run build:og`, since the raster icons are cut from the same artwork.
-- [ ] **Google Search Console**, verified by the HTML meta tag or file upload —
-      a `vercel.app` alias gives you no DNS to put a TXT record on. Submit
-      `https://bizynex.vercel.app/sitemap.xml`. Then **Bing Webmaster Tools**,
+- [ ] **Google Search Console.** The domain now has DNS, so verify the
+      **domain property** `bizynex.ir` with a TXT record — it covers the apex,
+      `www` and both protocols in one, which the URL-prefix method does not.
+      Submit `https://bizynex.ir/sitemap.xml`. Then **Bing Webmaster Tools**,
       which accepts a GSC import and takes about two minutes.
 - [ ] **Validate the deployed page** at `validator.schema.org` and Google's
       Rich Results Test. The FAQ markup should show as eligible.
@@ -269,15 +276,15 @@ this and documented the result: palette PNG beats every alternative on flat
 two-colour artwork by a wide margin (1.8 KB vs 7.8 KB AVIF). The existing
 decision is correct; do not "fix" it.
 
-**A custom domain.** Not a launch blocker. `bizynex.vercel.app` is a real,
-indexable origin and the page ranks or does not rank on its merits either way.
-When a custom domain is bought and attached, it is a three-part change and all
-three parts have to land together: `site.url` in `src/content/site.ts`, the
-absolute URLs in `index.html`, and the `Sitemap:` line in `public/robots.txt`.
-Then add the new hostname as the primary domain in Vercel, reinstate the `www`
-→ apex redirect in `vercel.json`, add the property in Search Console, and file
-a change of address. Doing it in the wrong order — canonical pointing at a
-domain that does not resolve yet — is the failure this pass had to undo.
+**A custom domain.** Done, 2026-08-13: `bizynex.ir`. The three-part change
+landed together — `site.url` in `src/content/site.ts`, the absolute URLs in
+`index.html`, the `Sitemap:` line in `public/robots.txt` — plus the `www` → apex
+redirect in `vercel.json`. What is left is not code: set the apex as the primary
+domain in Vercel, add the property in Search Console, and, once the old alias
+has been indexed under the new canonical, file a change of address.
+
+The order matters and it is the failure an earlier pass had to undo: a canonical
+must never name a domain that does not resolve yet.
 
 **Breadcrumb structured data.** One page. A breadcrumb of length one is noise.
 

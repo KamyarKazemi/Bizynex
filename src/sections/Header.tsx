@@ -174,6 +174,16 @@ export const Header = ({ hrefPrefix = '', currentPath }: HeaderProps) => {
   const triggerRef = useRef<HTMLButtonElement>(null);
   /** Set by the down-arrow, cleared the moment the panel has taken focus. */
   const shouldFocusMenu = useRef(false);
+  /**
+   * True from the moment a touch lands on a condensed pill until the click that
+   * touch turns into has been swallowed.
+   *
+   * It has to be a ref rather than state. The touch opens the pill, which is a
+   * render, so by the time the click arrives `isCondensed` is already false and
+   * the link under the finger would be followed by the very gesture that opened
+   * the nav. What matters is what the pill was when the finger went down.
+   */
+  const openedByTouch = useRef(false);
 
   // Undefined in the hero, and while passing any section the nav does not link
   // to — OBSERVED_IDS watches the hero plus the three nav targets and nothing
@@ -288,7 +298,18 @@ export const Header = ({ hrefPrefix = '', currentPath }: HeaderProps) => {
           onPointerLeave={(event) => {
             if (event.pointerType === 'mouse') closeAll();
           }}
-          onFocus={() => setIsOpen(true)}
+          // Keyboard focus expands the pill; a touch that merely *lands* on a
+          // control inside it does not. Both are `focus` events and only
+          // `:focus-visible` tells them apart — without the test, tapping the
+          // theme toggle would throw the whole nav open, which is a second
+          // thing happening for a press that asked for one.
+          //
+          // Touch still has its own way in: the pointerdown on the window
+          // below. This only declines to open the nav for a finger that was
+          // reaching for something else.
+          onFocus={(event) => {
+            if (event.target.matches(':focus-visible')) setIsOpen(true);
+          }}
           onBlur={(event) => {
             // Focus moving between two controls inside the pill is not focus
             // leaving it, so the pill must not close underneath the reader.
@@ -306,6 +327,19 @@ export const Header = ({ hrefPrefix = '', currentPath }: HeaderProps) => {
           {/* The window. Its width is the whole strip, or one link plus the room
               its focus ring needs. */}
           <div
+            // Touch opens the pill the instant a finger lands on the nav, on
+            // `pointerdown` rather than on a completed tap. A mouse has hover
+            // and a keyboard has focus; touch had neither, so until now the
+            // only way in was to hit the one visible link precisely, and a
+            // press that missed it by a few pixels did nothing at all.
+            //
+            // It is on the window rather than on the whole pill so that
+            // reaching for the theme toggle does not also throw the nav open.
+            onPointerDown={(event) => {
+              if (event.pointerType === 'mouse') return;
+              openedByTouch.current = isCondensed;
+              if (isCondensed) setIsOpen(true);
+            }}
             // `overflow-hidden` still scrolls: focusing a clipped link makes the
             // browser scroll it into view, which is a second mechanism moving the
             // strip and it fights the margin below. Focus expands the pill
@@ -328,9 +362,21 @@ export const Header = ({ hrefPrefix = '', currentPath }: HeaderProps) => {
               // already in, so a tap on it has nowhere to go. Spend it on
               // opening the pill instead. Mouse and keyboard never arrive here:
               // both have already opened it, by hover or by focus.
+              //
+              // `openedByTouch` is what makes the two halves of one tap agree.
+              // The pointerdown above has already opened the pill, so
+              // `isCondensed` is false by the time this runs — without the ref,
+              // the finger that opened the nav would also follow the link it
+              // landed on and close it again in the same gesture.
               onClickCapture={(event) => {
-                if (!isCondensed) return;
+                if (!isCondensed && !openedByTouch.current) return;
+                openedByTouch.current = false;
+                // Both, and each does a different job: `preventDefault` stops a
+                // link being followed, `stopPropagation` stops the خدمات button
+                // — which is not a link and would otherwise throw its panel open
+                // on the same touch that revealed it.
                 event.preventDefault();
+                event.stopPropagation();
                 setIsOpen(true);
               }}
             >

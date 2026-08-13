@@ -11,13 +11,20 @@ Last full pass: **2026-08-10**, against branch `ove`.
 
 ## 1. Where this deploys
 
-**Origin: `https://bizynex.vercel.app`.**
+**Origin: `https://bizynex.ir`.** Since 2026-08-13, when the domain was
+attached to the project and its nameservers pointed at `ns1.vercel-dns.com` /
+`ns2.vercel-dns.com`.
 
-This was decided on 2026-08-10 and it reversed an earlier assumption. The repo
-previously declared `https://bizynex.ir/` as canonical while being served from
-the Vercel alias — a page that canonicalises to a domain nobody controls tells
-Google to index a URL that does not resolve, which quietly de-indexes it. That
-is fixed; there are now zero references to `bizynex.ir` in the built output.
+This has moved twice, so keep the history straight rather than re-litigating it.
+The repo originally declared `bizynex.ir` while being served from the Vercel
+alias — a page that canonicalises to a domain nobody controls tells Google to
+index a URL that does not resolve, which quietly de-indexes it — so on
+2026-08-10 everything was flipped to `bizynex.vercel.app`. The domain now
+exists, so it has flipped back, and there are zero references to the alias in
+the built output (verified, not assumed).
+
+The rule both moves share: **the canonical may only ever name a hostname that
+actually resolves to this site.**
 
 The origin is duplicated in exactly **three** places. Change one, change all three:
 
@@ -28,16 +35,31 @@ The origin is duplicated in exactly **three** places. Change one, change all thr
 `src/content/jsonLd.ts` and `scripts/prerender.mjs` both derive from the constant
 and need no edit — verified, not assumed.
 
-### If a custom domain arrives later
+### The one piece deliberately left undone
 
-Change those three places, then in the Vercel dashboard add both the apex and
-`www`, set the apex primary, and reinstate a `redirects` block in `vercel.json`
-sending `www` **and** `bizynex.vercel.app` to the apex. The `redirects` key was
-removed rather than left empty because a rule naming a domain that is not
-attached to the project can never fire, and dead config reads as working config.
+`vercel.json` redirects `www.bizynex.ir` to the apex. It does **not** yet
+redirect `bizynex.vercel.app`, and that is a decision rather than an oversight:
+`.ir` nameserver changes go through IRNIC and routinely take 24–72 hours, and
+during that window the alias is the only address that serves. Redirecting it to
+a host that is not resolving yet takes the site off the internet.
 
-Do it in that order. Pointing the redirect at a domain before the origin
-constant follows it will bounce live traffic to a host that is not serving.
+Nothing is lost by waiting. Every page the alias serves already carries a
+canonical, an `og:url`, both `hreflang`s and a sitemap entry naming
+`https://bizynex.ir` — which is what a crawler acts on.
+
+**Add this once Vercel shows the domain as Valid Configuration**, into the
+existing `redirects` array:
+
+```json
+{
+  "source": "/(.*)",
+  "has": [{ "type": "host", "value": "bizynex.vercel.app" }],
+  "destination": "https://bizynex.ir/$1",
+  "permanent": true
+}
+```
+
+And in the Vercel dashboard: both the apex and `www` attached, apex primary.
 
 ---
 
@@ -517,6 +539,45 @@ rather than a repeat of this one, so none was invented here.
 
 ---
 
+## 3d. The 2026-08-13 pass — the domain, and touch
+
+**The origin moved to `bizynex.ir`.** All three places, plus the `www` redirect.
+See §1, including the one redirect deliberately not added yet. Verified: zero
+occurrences of the old alias anywhere in `dist/`, five canonicals and five
+sitemap `<loc>`s on the new origin, and the JSON-LD `@id`s with them.
+
+**The header opens to a touch.** It did not before, and the reason is worth
+recording because it is invisible until someone holds a phone: a mouse has
+hover and a keyboard has focus, but touch had neither, so the only way into a
+condensed pill was to hit the single visible link precisely. A press a few
+pixels wide of it did nothing at all.
+
+Now a finger landing anywhere on the nav opens it, on `pointerdown` rather than
+on a completed tap. Three things had to be true at once, and each needed its own
+mechanism:
+
+- **The touch that opens the nav must not also follow the link under it.** The
+  pointerdown opens the pill, which is a render, so `isCondensed` is already
+  false by the time the click arrives. `openedByTouch` is a ref that records
+  what the pill *was* when the finger went down.
+- **It must not open the خدمات panel either.** That control is a button, not a
+  link, so `preventDefault` does not stop it — the capture handler calls
+  `stopPropagation` as well.
+- **Reaching for the theme toggle must not throw the nav open.** It did, and not
+  because of anything above: tapping a button focuses it, focus bubbles, and the
+  pill's `onFocus` opened. The fix is that focus only expands the pill when it
+  is `:focus-visible` — which is exactly the difference between a keyboard
+  arriving and a finger landing.
+
+Measured on an emulated Pixel 7 with real touch events: condensed nav 71px wide
+with one item on screen → one tap → 187px with four items, URL unchanged. Second
+tap navigates. خدمات opens the panel; a row in it navigates. The theme toggle
+changes the theme and leaves the nav at 71px. Keyboard is unchanged: two tabs
+still expand the pill (83px → 223px) with the focused control fully inside the
+window.
+
+---
+
 ## 4. Blocked on a human — an agent cannot do these
 
 Ordered by cost of getting them wrong.
@@ -567,7 +628,19 @@ Ordered by cost of getting them wrong.
       domain is a small trust signal working against you.
 - [ ] **Google Search Console**, then Bing (accepts a GSC import). On a
       `vercel.app` alias there is no DNS to hold a TXT record, so verify by meta
-      tag or HTML file. Submit `https://bizynex.vercel.app/sitemap.xml`.
+      tag or HTML file — or, better now that the domain has DNS, as a **domain
+      property** verified by TXT, which covers apex, `www` and both protocols
+      at once. Submit `https://bizynex.ir/sitemap.xml`.
+- [ ] **Set the apex as the primary domain in Vercel**, with `www.bizynex.ir`
+      attached alongside it — and once Vercel reports Valid Configuration, add
+      the `bizynex.vercel.app` → apex redirect from §1. Until the apex is
+      primary, the dashboard and `vercel.json` disagree about which hostname is
+      canonical.
+- [ ] **Test `bizynex.ir` from a domestic connection**, fixed line and mobile
+      data both, before it goes on anything printed. `CLAUDE.md` §2 exists
+      because Iranian connections to foreign endpoints are throttled or
+      blocked; self-hosting the fonts and assets fixed that for the assets, not
+      for the origin, and Vercel's edge is a foreign host.
 - [ ] **Google Business Profile** — needs a verifiable Shiraz address. For a
       local services business this is plausibly worth more than every other item
       here combined; it puts you in the map pack, above the organic results.
