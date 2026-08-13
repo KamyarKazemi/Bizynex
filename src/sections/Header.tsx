@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { PageMenu } from '../components/PageMenu';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { fa } from '../content/fa';
@@ -31,6 +31,38 @@ const MORPH = 'duration-200 ease-[cubic-bezier(0.16,1,0.3,1)]';
 
 /** Names the panel for the trigger's `aria-controls`. One header per page. */
 const MENU_ID = 'header-pages';
+
+/**
+ * A pointer that can hover and can point precisely — a mouse or a trackpad.
+ *
+ * This is the condition the condensed pill was designed around, and it was
+ * never checked. Condensing hides two of the three links, and on a mouse that
+ * is fine because the whole strip comes back the instant the pointer arrives
+ * over it, before any click. A phone has no such moment: there, condensing puts
+ * navigation behind a gesture nothing on screen advertises, so a visitor who
+ * wants «تماس» has to first discover that the word they can see is a door.
+ *
+ * So the pill condenses where hovering exists and stays open where it does not.
+ * The capsule still travels between the three links either way, which is the
+ * part that reports where the reader is — that never depended on hiding
+ * anything.
+ */
+const HOVER_QUERY = '(hover: hover) and (pointer: fine)';
+
+/* Subscribed to rather than read once: a tablet with a keyboard case attached,
+   and a laptop whose mouse is unplugged, both change the answer mid-visit.
+   Module level so the subscription is not torn down and rebuilt every render. */
+const subscribeToHover = (onChange: () => void) => {
+  const query = window.matchMedia(HOVER_QUERY);
+  query.addEventListener('change', onChange);
+  return () => query.removeEventListener('change', onChange);
+};
+
+const readHover = () => window.matchMedia(HOVER_QUERY).matches;
+
+/* What the server renders, and therefore what the browser hydrates against:
+   no hover, so the prerendered header is the open, complete nav. */
+const noHoverOnServer = () => false;
 
 /**
  * Where the capsule has to be. Three numbers, measured once from the live
@@ -168,6 +200,7 @@ export const Header = ({ hrefPrefix = '', currentPath }: HeaderProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [capsule, setCapsule] = useState<Capsule | null>(null);
+  const canHover = useSyncExternalStore(subscribeToHover, readHover, noHoverOnServer);
   const pillRef = useRef<HTMLDivElement>(null);
   const stripRef = useRef<HTMLUListElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -194,7 +227,7 @@ export const Header = ({ hrefPrefix = '', currentPath }: HeaderProps) => {
   // An open panel holds the pill open under it. A panel hanging off a capsule
   // that has condensed to one word is two controls disagreeing about state.
   const isExpanded = isOpen || isMenuOpen;
-  const isCondensed = capsule !== null && !isExpanded && !prefersReducedMotion;
+  const isCondensed = capsule !== null && !isExpanded && !prefersReducedMotion && canHover;
 
   const closeAll = () => {
     setIsMenuOpen(false);
@@ -327,11 +360,14 @@ export const Header = ({ hrefPrefix = '', currentPath }: HeaderProps) => {
           {/* The window. Its width is the whole strip, or one link plus the room
               its focus ring needs. */}
           <div
-            // Touch opens the pill the instant a finger lands on the nav, on
-            // `pointerdown` rather than on a completed tap. A mouse has hover
-            // and a keyboard has focus; touch had neither, so until now the
-            // only way in was to hit the one visible link precisely, and a
-            // press that missed it by a few pixels did nothing at all.
+            // For the devices that condense *and* take touch — a laptop with a
+            // touchscreen, a tablet with a mouse paired. A finger landing
+            // anywhere on the nav opens it, on `pointerdown` rather than on a
+            // completed tap, so the reader never has to hit the one visible
+            // link precisely to get the other two back.
+            //
+            // A phone never reaches this: it fails HOVER_QUERY, so it is never
+            // condensed and every link is already on screen.
             //
             // It is on the window rather than on the whole pill so that
             // reaching for the theme toggle does not also throw the nav open.

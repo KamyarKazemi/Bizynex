@@ -546,15 +546,32 @@ See §1, including the one redirect deliberately not added yet. Verified: zero
 occurrences of the old alias anywhere in `dist/`, five canonicals and five
 sitemap `<loc>`s on the new origin, and the JSON-LD `@id`s with them.
 
-**The header opens to a touch.** It did not before, and the reason is worth
-recording because it is invisible until someone holds a phone: a mouse has
-hover and a keyboard has focus, but touch had neither, so the only way into a
-condensed pill was to hit the single visible link precisely. A press a few
-pixels wide of it did nothing at all.
+**The header does not condense on a phone.** This is the real fix, and it
+replaces a smaller one that was aimed at the wrong thing.
 
-Now a finger landing anywhere on the nav opens it, on `pointerdown` rather than
-on a completed tap. Three things had to be true at once, and each needed its own
-mechanism:
+The condensed pill hides two of the three links, and on a mouse that costs
+nothing: the whole strip returns the instant the pointer arrives over it, before
+any click. A phone has no such moment. There, condensing put navigation behind
+a gesture that nothing on screen advertised — a visitor who wanted «تماس» had
+first to work out that the one word they could see was a door. That is not a
+subtle flaw; it is the nav not working.
+
+So the pill now condenses only where `(hover: hover) and (pointer: fine)`
+holds, subscribed to with `useSyncExternalStore` because a tablet gaining a
+keyboard case and a laptop losing its mouse both change the answer mid-visit.
+The capsule still travels between the three links on every device — reporting
+where the reader is never depended on hiding anything.
+
+**Measured on emulated touch devices:** the whole pill is 232px wide at 320,
+360, 390 and 414px viewports — it fits everywhere, with no horizontal overflow
+and all three items on screen. One tap goes to «تماس», one tap to «روش کار»,
+one tap opens the خدمات panel, one tap on a row inside it opens that page.
+Desktop is untouched: 83px condensed, 223px on hover, back to 83px when the
+pointer leaves, and two tabs still expand it.
+
+**Touch on a device that does still condense** — a touchscreen laptop, a tablet
+with a mouse paired — opens the pill on `pointerdown` rather than on a completed
+tap. Three things had to be true at once, and each needed its own mechanism:
 
 - **The touch that opens the nav must not also follow the link under it.** The
   pointerdown opens the pill, which is a render, so `isCondensed` is already
