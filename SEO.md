@@ -69,12 +69,11 @@ Also set:
   the primary domain in the Vercel dashboard too, so the rule and the dashboard
   agree.
 
-  **One redirect is still to come**, and it is deliberately not here yet: the
-  Vercel project alias is the address that works while `.ir` nameservers
-  propagate, and redirecting it to a host that is not resolving would take the
-  site off the internet. It costs nothing to wait — every page that alias
-  serves carries a canonical pointing at `bizynex.ir`, which is what Google
-  acts on. `PRODUCTION.md` §1 has the block and the condition for adding it.
+  **The Vercel project alias redirects here too**, added once the domain
+  reported Valid Configuration. It was deliberately held back for a few hours
+  while `.ir` nameservers propagated: the alias was the only address serving,
+  and pointing it at a host that does not resolve takes the site off the
+  internet. Hold it back the same way if the origin ever moves again.
 - **Security headers** (`nosniff`, `Referrer-Policy`, `X-Frame-Options`,
   `Permissions-Policy`, HSTS). Not ranking factors, but HSTS removes an HTTP→HTTPS
   redirect hop on repeat visits, which is a real latency win.

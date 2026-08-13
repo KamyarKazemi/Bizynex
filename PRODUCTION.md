@@ -42,31 +42,17 @@ The origin is duplicated in exactly **three** places. Change one, change all thr
 `src/content/jsonLd.ts` and `scripts/prerender.mjs` both derive from the constant
 and need no edit — verified, not assumed.
 
-### The one piece deliberately left undone
+### Both aliases redirect to the apex
 
-`vercel.json` redirects `www.bizynex.ir` to the apex. It does **not** yet
-redirect `bizynex.vercel.app`, and that is a decision rather than an oversight:
-`.ir` nameserver changes go through IRNIC and routinely take 24–72 hours, and
-during that window the alias is the only address that serves. Redirecting it to
-a host that is not resolving yet takes the site off the internet.
+`vercel.json` sends `www.bizynex.ir` **and** `bizynex.vercel.app` to
+`https://bizynex.ir`, 301, path preserved. The second one was held back for a
+few hours on 2026-08-13 while `.ir` nameservers propagated through IRNIC —
+redirecting the alias to a host that is not resolving yet takes the site off
+the internet — and was added once the domain reported Valid Configuration in
+Vercel. If the origin ever moves again, hold that redirect back the same way.
 
-Nothing is lost by waiting. Every page the alias serves already carries a
-canonical, an `og:url`, both `hreflang`s and a sitemap entry naming
-`https://bizynex.ir` — which is what a crawler acts on.
-
-**Add this once Vercel shows the domain as Valid Configuration**, into the
-existing `redirects` array:
-
-```json
-{
-  "source": "/(.*)",
-  "has": [{ "type": "host", "value": "bizynex.vercel.app" }],
-  "destination": "https://bizynex.ir/$1",
-  "permanent": true
-}
-```
-
-And in the Vercel dashboard: both the apex and `www` attached, apex primary.
+The dashboard has to agree with this file: both the apex and `www` attached to
+the project, apex primary.
 
 ---
 
@@ -655,8 +641,7 @@ Ordered by cost of getting them wrong.
       domain property covers the apex, `www` and both protocols in one, which
       the URL-prefix method does not. Submit `https://bizynex.ir/sitemap.xml`.
 - [ ] **Set the apex as the primary domain in Vercel**, with `www.bizynex.ir`
-      attached alongside it — and once Vercel reports Valid Configuration, add
-      the last redirect from §1. Until the apex is primary, the dashboard and
+      attached alongside it. Until the apex is primary, the dashboard and
       `vercel.json` disagree about which hostname is canonical.
 - [ ] **Test `bizynex.ir` from a domestic connection**, fixed line and mobile
       data both, before it goes on anything printed. `CLAUDE.md` §2 exists
