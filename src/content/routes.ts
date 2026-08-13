@@ -13,6 +13,11 @@
  * what goes in the sitemap. Adding a page is one entry here plus its copy.
  */
 
+/* Titles only, and only to drop a page that has none from the lists below.
+ * `fa.ts` imports nothing but types from this file, so this edge runs one way
+ * and there is no cycle. */
+import { fa } from './fa';
+
 export type RouteKey = 'home' | 'automation' | 'software' | 'app' | 'delivery' | 'work';
 
 /** Every route except home: the four Tier-1 service pages, plus the case study. */
@@ -76,6 +81,33 @@ export const publishedRoutes = (): readonly Route[] =>
  */
 const withoutTrailingSlash = (pathname: string) =>
   pathname.length > 1 && pathname.endsWith('/') ? pathname.slice(0, -1) : pathname;
+
+/**
+ * A published route that is not home, narrowed so that `fa.pages[route.key]` is
+ * a safe lookup — `fa.pages` has no `home` entry, and the compiler has to be
+ * told that dropping home is what makes that lookup safe.
+ */
+export type ServicePageRoute = Route & { readonly key: ServiceRouteKey };
+
+/**
+ * Every page the header menu, the footer and a service page's cross-links list.
+ * All three show the same set in the same order, which is the point: navigation
+ * that changes shape as you move through the site is navigation you have to
+ * re-read. It lives here rather than in one of them because it is a question
+ * about the route table, and the route table is here.
+ *
+ * A page with no title is dropped, which only ever happens in `npm run dev`:
+ * `publishedRoutes` keeps drafts there so the founder can open one, and every
+ * list above then rendered `/work` as a link with nothing inside it — an empty
+ * row in the header menu, an empty card under «صفحه‌های دیگر», an invisible
+ * link in the footer, and, because the callout numerals are positional, a
+ * stray «۰۵» beside the blank. A draft stays reachable by URL; it just cannot
+ * be *listed*, because listing it means naming it and it has no name yet.
+ */
+export const servicePageRoutes = (): readonly ServicePageRoute[] =>
+  publishedRoutes()
+    .filter((route): route is ServicePageRoute => route.key !== 'home')
+    .filter((route) => fa.pages[route.key].title !== '');
 
 export const routeForPath = (pathname: string): Route | undefined =>
   publishedRoutes().find((route) => route.path === withoutTrailingSlash(pathname));

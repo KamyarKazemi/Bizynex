@@ -1,9 +1,10 @@
 import { useCallback, useState } from 'react';
 import { Action } from '../components/Action';
+import { Marked } from '../components/Marked';
+import { emphasis } from '../content/emphasis';
 import { fa } from '../content/fa';
 import { HERO_ID, SECTION_IDS } from '../content/site';
 import { HeroCanvas } from '../three/HeroCanvas';
-import { Marked } from '../components/Marked';
 
 /**
  * A single framed panel: the woven figure standing in front of the name.
@@ -81,8 +82,16 @@ export const Hero = () => {
                 : 'sm:absolute sm:inset-0 sm:flex sm:flex-col sm:justify-end sm:p-10 lg:p-14'
             }
           >
-            <h1 className="max-w-measure text-display font-semibold text-ink">{fa.hero.title}</h1>
-            <p className="mt-4 max-w-measure text-lead text-ink/80"><Marked>{fa.hero.subtitle}</Marked></p>
+            {/* The scene draws its own copy on a letterbox and this block goes
+                sr-only, so the marks below are only ever seen on the
+                arrangement that shows this heading — a phone, and any desktop
+                where WebGL never started. */}
+            <h1 className="max-w-measure text-display font-semibold text-ink">
+              <Marked mark={emphasis.hero.title} />
+            </h1>
+            <p className="mt-4 max-w-measure text-lead text-ink/80">
+              <Marked mark={emphasis.hero.subtitle} />
+            </p>
           </div>
         </div>
 

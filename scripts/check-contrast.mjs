@@ -69,6 +69,11 @@ const PAIRS = [
   ['opening room text', 'opening-ink', 'opening', 4.5],
   ['opening room skip and mute controls', 'opening-muted', 'opening', 4.5],
   ['opening room teal mark', 'opening-accent', 'opening', 4.5],
+  // The emphasis mark. The wash carries body text, so it is held to the body
+  // floor rather than to the 3:1 a decorative fill would need.
+  ['marked phrase on its wash', 'ink', 'mark', 4.5],
+  ['mark rule against the page', 'mark-rule', 'paper', 3],
+  ['mark rule against the wash', 'mark-rule', 'mark', 3],
   ['action label on accent fill', 'on-accent', 'accent-fill', 4.5],
   ['action label on hover fill', 'on-accent', 'accent-hover', 4.5],
   ['focus ring against page', 'accent-text', 'paper', 3],

@@ -1,30 +1,21 @@
 import { Logo } from '../components/Logo';
 import { fa } from '../content/fa';
-import { publishedRoutes, type Route, type ServiceRouteKey } from '../content/routes';
+import { servicePageRoutes } from '../content/routes';
 import { site } from '../content/site';
 
 /**
- * Every page except the one you are on, from every page.
+ * Every page, from every page.
  *
- * This is the only thing linking the service pages, and without it they are
- * orphans: reachable from the sitemap, which is a hint, and from nothing a
- * crawler actually follows. An orphan page gets indexed weakly if at all, and
- * no visitor ever finds it. The footer is the right home for them rather than
- * the header — the capsule in the header is a reading position indicator for
- * the home page's sections, and hanging a second, different kind of navigation
- * off it would make one control mean two things.
+ * This was the *only* thing linking the service pages until the header grew a
+ * panel for them, and it is still the one that needs no script to work: if the
+ * bundle never arrives, these four links are the site's navigation. Without
+ * them the pages are orphans — reachable from the sitemap, which is a hint, and
+ * from nothing a crawler actually follows.
  *
  * Built from the route table, so a new page appears here by existing and a
  * draft never does. Labels are the pages' own `h1`s, so a link and the page it
  * opens can never disagree about what the page is called.
  */
-type PageRoute = Route & { readonly key: ServiceRouteKey };
-
-/* The predicate narrows rather than casts: `fa.pages` has no `home` entry, so
-   the compiler has to be told that dropping home is what makes the lookup on
-   the next line safe. */
-const pageLinks = (): readonly PageRoute[] =>
-  publishedRoutes().filter((route): route is PageRoute => route.key !== 'home');
 
 /**
  * The tagline sits here rather than in the hero because a plain, literal "what
@@ -46,7 +37,7 @@ type FooterProps = {
 };
 
 export const Footer = ({ currentPath }: FooterProps) => {
-  const links = pageLinks();
+  const links = servicePageRoutes();
 
   return (
     <footer className="border-t border-rule bg-paper">

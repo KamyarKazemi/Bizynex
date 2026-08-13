@@ -1,4 +1,4 @@
-import { fa, plain } from './fa';
+import { fa } from './fa';
 import { SECTION_IDS, site } from './site';
 
 /**
@@ -248,13 +248,16 @@ const graph = [
   },
 ];
 
+/* No stripping pass here, and none is needed: `fa.ts` holds sentences and no
+   notation at all. The emphasis phrases live in `src/content/emphasis.ts` and
+   point *into* the copy, so the forty-odd strings this graph pulls out of fa.ts
+   are the same strings a reader sees. The alternative — delimiters inside the
+   copy, removed again on the way out — puts a literal `[[` in front of a search
+   engine the first time one consumer is forgotten. See the note at the top of
+   src/content/emphasis.ts. */
 const wrap = (nodes: unknown[]) =>
   `<script type="application/ld+json">${escapeForScriptTag(
-    /* Stripped here, on the finished JSON, rather than field by field. The
-       graph pulls forty-odd strings out of fa.ts and any one of them may gain
-       an emphasis mark later; a central pass cannot be forgotten the way a
-       per-field plain() call can. */
-    plain(JSON.stringify({ '@context': 'https://schema.org', '@graph': nodes })),
+    JSON.stringify({ '@context': 'https://schema.org', '@graph': nodes }),
   )}</script>`;
 
 /** The full `<script type="application/ld+json">` element, ready to paste. */
@@ -280,6 +283,14 @@ export const jsonLdScript = wrap(graph);
  * sub-pages existed: the trail is now home → this page, which is the two-level
  * hierarchy Google renders in place of a bare URL. Recorded here so nobody
  * re-litigates it from the old note.
+ *
+ * It is the *only* breadcrumb now. The visible trail at the top of the page was
+ * removed — the header, the footer and the URL each already say where you are,
+ * and it was crowding the one place on the page that should open on the
+ * heading. This node stays because it is not a duplicate of anything a visitor
+ * reads: it is what a crawler prints above a result in place of a bare URL, and
+ * it describes a hierarchy the site genuinely has. Nothing here can disagree
+ * with the page, because the page no longer states it twice.
  */
 export const jsonLdScriptForPage = (page: {
   key: string;

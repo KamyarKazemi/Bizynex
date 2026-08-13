@@ -45,6 +45,20 @@
   --color-on-accent: #0a1a28; /* label on the accent fill — 5.47:1 */
   --color-selection: #e7f6f4;
 
+  /* ---- Semantic: the emphasis mark ------------------------------------
+   * The two layers a marked phrase is drawn from: `mark` is the wash the
+   * words sit on, `mark-rule` is the line that draws underneath it first.
+   * See the `.mark` rules in src/index.css.
+   *
+   * The wash is a flat colour rather than teal at low alpha on purpose. An
+   * alpha wash has no single value, so `ink` on top of it cannot be measured
+   * — and this is text a visitor has to read, not decoration. Written as an
+   * opaque colour, the pair is checked by scripts/check-contrast.mjs like
+   * every other pair on the site.
+   */
+  --color-mark: #d5efeb; /* the wash — ink on it is 11.2:1 */
+  --color-mark-rule: #0e7a72; /* the rule that draws under it */
+
   /* ---- Semantic: the hero panel ---------------------------------------
    * The panel is a lit room rather than a flat section, so it needs more
    * than a background and a foreground: a wall, the rules drawn on it, the
@@ -160,6 +174,9 @@
       --color-accent-text: #4fd6c7;
       --color-selection: #1d3e58;
 
+      --color-mark: #123f43; /* ink on it is 9.3:1 */
+      --color-mark-rule: #4fd6c7;
+
       --color-panel: #0a1a28;
       --color-panel-rule: #1d3e58;
       --color-panel-name: #e4e9ee;
@@ -186,6 +203,9 @@
 
     --color-accent-text: #4fd6c7;
     --color-selection: #1d3e58;
+
+    --color-mark: #123f43; /* ink on it is 9.3:1 */
+    --color-mark-rule: #4fd6c7;
 
     --color-panel: #0a1a28;
     --color-panel-rule: #1d3e58;

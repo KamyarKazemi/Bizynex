@@ -1,5 +1,7 @@
+import { Marked } from '../components/Marked';
 import { Section } from '../components/Section';
 import { SectionHeader } from '../components/SectionHeader';
+import { emphasis } from '../content/emphasis';
 import { fa } from '../content/fa';
 import { SECTION_IDS, SECTION_INDEX } from '../content/site';
 
@@ -26,9 +28,12 @@ export const Delivered = () => (
     <p className="max-w-measure text-lead text-ink">{fa.delivery.lead}</p>
 
     <ul className="mt-10 max-w-measure border-s border-rule ps-6">
-      {fa.delivery.items.map((item) => (
+      {fa.delivery.items.map((item, index) => (
         <li key={item} className="border-t border-rule py-4 text-body text-ink first:border-t-0 first:pt-0">
-          {item}
+          {/* Three of the six are marked — the two that decide whether the
+              client is locked in, and the one that costs us money. Marking all
+              six would flatten the list back into six equal lines. */}
+          <Marked mark={emphasis.delivery.items[index]} />
         </li>
       ))}
     </ul>

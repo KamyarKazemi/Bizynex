@@ -5,6 +5,16 @@ type PageCopy = {
   readonly title: string;
   /** The paragraph directly under it. */
   readonly intro: string;
+  /**
+   * One line, for the header menu and the cross-links at the foot of a sibling
+   * page. It is read next to the title, so it must not repeat it — the title
+   * names the thing and this says what the page argues about it.
+   *
+   * Deliberately not the first sentence of `intro`. A blurb that is a truncated
+   * paragraph reads as a truncated paragraph, and «…» in a menu is a promise
+   * that something was left out.
+   */
+  readonly blurb: string;
   readonly sections: readonly { readonly heading: string; readonly body: string }[];
 };
 
@@ -29,17 +39,6 @@ type PageCopy = {
  * It sits above `fa` rather than inside it only because `fa` reads it, and a
  * const has to exist before it is read. It is reachable as `fa.pages`.
  */
-/**
- * The same copy with its `[[…]]` emphasis delimiters removed.
- *
- * `src/components/Marked.tsx` renders those brackets as an accent rule. Every
- * *other* consumer of the same string wants the sentence and not the notation:
- * a `<title>`, a meta description, and every name and description in the
- * structured data. Forgetting one puts a literal `[[` in front of a search
- * engine, which is exactly what happened the first time this shipped.
- */
-export const plain = (text: string) => text.replace(/\[\[(.+?)\]\]/g, '$1');
-
 const pages: Record<ServiceRouteKey, PageCopy> = {
   /* Targets the automation queries, where the results today are national ERP
      vendors rather than local agencies. The shape of each page is the same and
@@ -48,7 +47,8 @@ const pages: Record<ServiceRouteKey, PageCopy> = {
   automation: {
     title: 'اتوماسیون کارهای تکراری',
     intro:
-      'کاری که هر هفته دستی انجام می‌شود، [[معمولاً لازم نیست دستی انجام شود]]. همان کار را به سیستم می‌سپاریم و وقتی که آزاد می‌شود به تیم شما برمی‌گردد.',
+      'کاری که هر هفته دستی انجام می‌شود، معمولاً لازم نیست دستی انجام شود. همان کار را به سیستم می‌سپاریم و وقتی که آزاد می‌شود به تیم شما برمی‌گردد.',
+    blurb: 'کار تکراری هفتگی که لازم نیست دستی انجام شود',
     sections: [
       {
         heading: 'معمولاً از اینجا شروع می‌شود',
@@ -71,7 +71,8 @@ const pages: Record<ServiceRouteKey, PageCopy> = {
   software: {
     title: 'نرم‌افزار سفارشی',
     intro:
-      'جایی که کار شما در هیچ نرم‌افزار آماده‌ای جا نمی‌شود، [[سیستم را دور خودِ کار می‌سازیم]] — نه اینکه کار را دور نرم‌افزار تغییر بدهید.',
+      'جایی که کار شما در هیچ نرم‌افزار آماده‌ای جا نمی‌شود، سیستم را دور خودِ کار می‌سازیم — نه اینکه کار را دور نرم‌افزار تغییر بدهید.',
+    blurb: 'وقتی قالب آماده کم می‌آورد و سیستم باید ساخته شود',
     sections: [
       {
         heading: 'قالب آماده کجا کم می‌آورد',
@@ -95,7 +96,8 @@ const pages: Record<ServiceRouteKey, PageCopy> = {
   app: {
     title: 'اپلیکیشن موبایل',
     intro:
-      'اپلیکیشن برای کاری است که کاربر مرتب و روی موبایل انجام می‌دهد. برای بقیهٔ کارها، [[سایتی که روی موبایل درست کار کند کافی است]].',
+      'اپلیکیشن برای کاری است که کاربر مرتب و روی موبایل انجام می‌دهد. برای بقیهٔ کارها، سایتی که روی موبایل درست کار کند کافی است.',
+    blurb: 'کجا اپلیکیشن لازم است و کجا لازم نیست',
     sections: [
       {
         heading: 'اول این را بپرسید',
@@ -120,7 +122,8 @@ const pages: Record<ServiceRouteKey, PageCopy> = {
   delivery: {
     title: 'چه چیزی تحویل می‌گیرید',
     intro:
-      'فهرستش در صفحهٔ اصلی آمده. اینجا می‌گوییم هر کدام شش ماه بعد، وقتی مشکلی پیش بیاید، [[دقیقاً به چه کارتان می‌آید]].',
+      'فهرستش در صفحهٔ اصلی آمده. اینجا می‌گوییم هر کدام شش ماه بعد، وقتی مشکلی پیش بیاید، دقیقاً به چه کارتان می‌آید.',
+    blurb: 'هر چیزی که در پایان کار به نام شما تحویل می‌شود',
     sections: [
       {
         heading: 'کد منبع، به نام خودتان',
@@ -148,7 +151,7 @@ const pages: Record<ServiceRouteKey, PageCopy> = {
   /* The case study. Empty for a different reason than the four above: they are
      waiting on copy, this is waiting on a real project with a real measurement.
      Do not write it from imagination — see src/content/routes.ts. */
-  work: { title: '', intro: '', sections: [] },
+  work: { title: '', intro: '', blurb: '', sections: [] },
 };
 
 /**
@@ -215,7 +218,7 @@ export const fa = {
     /* Category, city, and the one differentiator. Nothing about process,
      * delivery or aftercare — all three have homes further down the page. */
     subtitle:
-      'یک تیم کوچک در شیراز. برای کسب‌وکارها وب‌سایت، اپلیکیشن و اتوماسیون می‌سازیم — و [[کسی که با او حرف می‌زنید، همان کسی است که کار را می‌سازد]].',
+      'یک تیم کوچک در شیراز. برای کسب‌وکارها وب‌سایت، اپلیکیشن و اتوماسیون می‌سازیم — و کسی که با او حرف می‌زنید، همان کسی است که کار را می‌سازد.',
     cta: 'شروع گفتگو',
     ctaSecondary: 'خدمات ما',
   },
@@ -356,7 +359,7 @@ export const fa = {
       'آنچه عدد را جابه‌جا می‌کند این‌هاست: اندازهٔ کار، تعداد سیستم‌هایی که باید به هم وصل شوند، و اینکه از صفر شروع می‌کنیم یا روی چیزی که از قبل دارید.',
     /* The single home for "no hidden cost". It is not said anywhere else. */
     guarantee:
-      'بعد از جلسهٔ اول یک عدد مکتوب می‌گیرید که تا پایان قرارداد تغییر نمی‌کند. [[هزینهٔ پنهان نداریم]]؛ اگر خودتان وسط کار چیزی به محدوده اضافه کردید، تفاوتش را پیش از انجامش با شما در میان می‌گذاریم.',
+      'بعد از جلسهٔ اول یک عدد مکتوب می‌گیرید که تا پایان قرارداد تغییر نمی‌کند. هزینهٔ پنهان نداریم؛ اگر خودتان وسط کار چیزی به محدوده اضافه کردید، تفاوتش را پیش از انجامش با شما در میان می‌گذاریم.',
     /* Says what the bot will ask for. There is no button in this section — the
      * page has one, at the bottom — so this paragraph's whole job is to make
      * that button unsurprising when the reader reaches it. */
@@ -461,12 +464,20 @@ export const fa = {
     brandName: 'بیزینکس',
     skipToContent: 'رفتن به محتوای اصلی',
     mainNav: 'ناوبری اصلی',
-    /* The header's page menu. Deliberately not «خدمات» — that word is already a
-     * nav link pointing at the home page's services *section*, and two controls
-     * with the same label meaning different destinations is the kind of thing
-     * a reader only notices by getting it wrong. ⚠ Claude draft; see
-     * COPY-REVIEW.md. */
-    pagesMenu: 'صفحه‌ها',
+
+    /* The header menu and the service pages' furniture. All of it is chrome —
+     * labels on controls and on structure — so the same note applies as to the
+     * rest of this block: standard Persian conventions, NEEDS NATIVE REVIEW.
+     *
+     * `servicePages` names the menu for a screen reader; the visible trigger is
+     * the nav's own «خدمات». `servicesOverview` is the row inside the menu that
+     * goes back to the home page's services section, and it has to read as a
+     * different destination from the four pages under it — the reason it says
+     * «در یک نگاه» rather than repeating the word خدمات on its own. */
+    servicePages: 'صفحه‌های خدمات',
+    servicesOverview: 'خدمات، در یک نگاه',
+    onThisPage: 'در این صفحه',
+    otherPages: 'صفحه‌های دیگر',
     emailUs: 'ارسال ایمیل به بیزینکس',
     skipIntro: 'رد کردن',
     switchToDark: 'حالت تیره',
@@ -512,6 +523,10 @@ export const emptyCopySlots = (key: RouteKey): string[] => {
 
   if (page.title === '') empty.push('title');
   if (page.intro === '') empty.push('intro');
+  // The blurb is the only thing the header menu and the cross-links have to
+  // describe this page with. A published page without one is a menu row that
+  // is a bare title, which is the state this feature exists to replace.
+  if (page.blurb === '') empty.push('blurb');
 
   // A service page with no body is a thin page, which is worse than no page:
   // it competes with the home page for the same terms and wins neither.

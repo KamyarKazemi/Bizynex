@@ -41,6 +41,15 @@ export const SECTION_INDEX = {
   contact: '۰۷',
 } as const;
 
+/**
+ * The same drawing-callout numerals as SECTION_INDEX, as a list, for the places
+ * that number something by position rather than by name: the header menu's
+ * rows and a service page's sections. Written out rather than formatted from an
+ * integer because these are two characters of copy and `Intl` here would be a
+ * dependency on a locale database to produce «۰۳».
+ */
+export const CALLOUTS = ['۰۱', '۰۲', '۰۳', '۰۴', '۰۵', '۰۶', '۰۷', '۰۸'] as const;
+
 export const site = {
   /**
    * Canonical origin. No trailing slash — every URL built from it adds its own.

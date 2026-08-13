@@ -57,6 +57,27 @@
   initial-value: 0px;
 }
 
+/**
+ * How far the emphasis mark has drawn, in two parts.
+ *
+ * Registered for the same reason the wave radius is: an unregistered custom
+ * property is a string and a string can only jump. Two of them rather than one
+ * `background-size` transition because the rule and the wash are deliberately
+ * out of step — the line arrives first and the colour follows it in — and a
+ * single property cannot carry two timings.
+ */
+@property --mark-rule-width {
+  syntax: '<percentage>';
+  inherits: false;
+  initial-value: 0%;
+}
+
+@property --mark-wash-width {
+  syntax: '<percentage>';
+  inherits: false;
+  initial-value: 0%;
+}
+
 @layer base {
   html {
     scroll-behavior: smooth;
@@ -141,6 +162,13 @@
    * last frame. */
   :root {
     --theme-wave-feather: 96px;
+    /* Which edge a mark, and every other drawn line, starts from. Persian is
+     * the default, so the default is the right edge; the mirror is one line. */
+    --draw-from: right;
+  }
+
+  [dir='ltr'] {
+    --draw-from: left;
   }
 
   @keyframes theme-wave {
@@ -214,80 +242,236 @@
   }
 }
 
-/* -------------------------------------------------------------------------
- * The marked phrase — see src/components/Marked.tsx and CONTEXT.md section 7.
- *
- * The rule lives here rather than in utility classes because its resting state
- * has to be inverted under reduced motion, and a media query cannot be
- * expressed in the class list on the element.
- * ------------------------------------------------------------------------- */
 @layer components {
-  [data-mark-rule] {
-    transform: scaleX(0);
-    /* The inline start. The site is RTL, so the rule draws right-to-left, the
-       same direction the sentence is read. Mirror this if the site is ever
-       mirrored — `transform-origin` has no logical keyword to do it for us. */
-    transform-origin: right;
-    transition: transform 220ms cubic-bezier(0.16, 1, 0.3, 1);
+  /* ---- The emphasis mark ------------------------------------------------
+   * A phrase the page wants read is drawn on rather than restyled: a hairline
+   * rule sweeps under it from the start edge, and the wash follows the rule in.
+   * Two layers, two timings, one gesture — a drafting pen going over a line
+   * that matters, which is the register CONTEXT.md section 7 asks for and the
+   * reason this is not a highlighter pen with a soft yellow body.
+   *
+   * Everything is painted with `background-image` rather than a pseudo-element
+   * because a marked phrase can break across lines. `box-decoration-break:
+   * clone` gives every line fragment its own copy of both layers; an absolutely
+   * positioned bar would only ever find the first fragment.
+   *
+   * The rule is the first layer, so it paints on top of the wash rather than
+   * under it. Both grow from `--draw-from`, so RTL and LTR are the same rule.
+   *
+   * Nothing here runs until `data-lit="on"` appears on an ancestor, which is
+   * what src/components/Marked.tsx sets when the phrase reaches the viewport.
+   * Before that the text is simply text — which is also exactly what a visitor
+   * with JavaScript blocked keeps, and it costs them nothing to read.
+   */
+  .mark {
+    /* Set per phrase by Marked, so a paragraph's marks arrive in reading
+       order instead of all at once. */
+    --mark-delay: 0ms;
+
+    /* The wash is a light surface in both themes, so the words on it take the
+       ink colour even inside a muted paragraph — a marked phrase is never the
+       faintest thing in its own sentence. */
+    color: var(--color-ink);
+    /* The tag is <strong>, and the mark is what carries the emphasis. Bolding
+       it as well would make a page of marked sentences read as shouting. */
+    font-weight: inherit;
+    background-repeat: no-repeat;
+    background-position: var(--draw-from) bottom, var(--draw-from) bottom;
+    background-image:
+      linear-gradient(var(--color-mark-rule), var(--color-mark-rule)),
+      linear-gradient(var(--color-mark), var(--color-mark));
+    background-size: var(--mark-rule-width) 2px, var(--mark-wash-width) 1.2em;
+    /* The wash needs to sit a little wider and a little lower than the glyphs,
+       and the negative margin gives that room back to the line so the words on
+       either side keep their spacing. */
+    padding-inline: 0.18em;
+    margin-inline: -0.18em;
+    padding-block-end: 0.12em;
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+    transition:
+      --mark-rule-width 420ms cubic-bezier(0.16, 1, 0.3, 1) var(--mark-delay),
+      --mark-wash-width 560ms cubic-bezier(0.16, 1, 0.3, 1) calc(var(--mark-delay) + 150ms);
   }
 
-  [data-mark-rule][data-drawn] {
-    transform: scaleX(1);
+  [data-lit='on'] .mark {
+    --mark-rule-width: 100%;
+    --mark-wash-width: 100%;
   }
 
-  /* Present from the start, with no entrance to opt out of. The global
-     transition flattening above would freeze the rule at scaleX(0) and simply
-     delete it, so the resting state has to be reversed rather than the
-     animation merely disabled. */
-  @media (prefers-reduced-motion: reduce) {
-    [data-mark-rule] {
-      transform: scaleX(1);
-    }
-  }
-}
-
-/* -------------------------------------------------------------------------
- * The header's page menu — see src/sections/Header.tsx.
- *
- * A surface that appears and disappears instantly reads as a rendering glitch
- * rather than as something opening. Both directions are inside CONTEXT.md
- * section 7's 150-250ms band, and the exit is quicker than the entrance: a
- * reader who has decided to dismiss something wants it gone, not eased away.
- *
- * `transform-origin` is the top inline-end corner — the corner nearest the
- * button it hangs from — so it scales out of its own trigger rather than
- * appearing to inflate from nowhere.
- * ------------------------------------------------------------------------- */
-@layer components {
-  [data-menu-panel] {
-    transform-origin: top left; /* RTL: the inline end. Mirror if the site is. */
+  /* ---- Reveal ----------------------------------------------------------
+   * Only ever applied to something that was below the fold when the page
+   * loaded — see src/components/Reveal.tsx, which refuses to hide anything a
+   * visitor could already be reading. `pending` is set by script and never by
+   * the server, so a page with no JavaScript has no hidden content in it.
+   */
+  [data-reveal='pending'] {
+    opacity: 0;
+    translate: 0 14px;
   }
 
-  [data-menu-panel][data-state='open'] {
-    /* `backwards`, never `both`. `both` holds the final keyframe forever — and
-       when the animation does not run at all (a background tab, a throttled
-       renderer) that final state is the `from`, so the menu would stay at
-       opacity 0 and simply never appear. `backwards` applies the entrance and
-       then hands the element back to its own styles, so a menu that cannot
-       animate is still a menu. */
-    animation: menu-in 180ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  /* The transition is declared on the arriving state and nowhere else. If it
+     sat on both, the moment the block was first hidden would itself be a
+     700ms fade *out* — off screen, so nobody would see it, and the block would
+     still be mid-fade when the reader got there. */
+  [data-reveal='in'] {
+    transition:
+      opacity 700ms ease,
+      translate 700ms cubic-bezier(0.16, 1, 0.3, 1);
   }
 
-  [data-menu-panel][data-state='closing'] {
-    animation: menu-out 140ms ease-in forwards;
+  /* ---- The drawn figures ------------------------------------------------
+   * Every path carries `pathLength="1"`, so one dash covers any path whatever
+   * its real length and the stagger is even across a 20px tick and a 200px run.
+   *
+   * Drawn is the default state, not the end state: a figure with no script,
+   * no IntersectionObserver or reduced motion is simply a finished drawing.
+   * See src/hooks/useArrival.ts, which only ever hides one that is off screen.
+   */
+  .figure-stroke {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 0;
   }
 
-  @keyframes menu-in {
-    from {
+  [data-draw='pending'] .figure-stroke {
+    stroke-dashoffset: 1;
+  }
+
+  [data-draw='in'] .figure-stroke {
+    stroke-dashoffset: 0;
+    transition: stroke-dashoffset 620ms cubic-bezier(0.16, 1, 0.3, 1);
+    transition-delay: calc(var(--stroke, 0) * 80ms);
+  }
+
+  /* ---- The price range, closing on one number --------------------------
+   * The two parts of src/components/PriceRange.tsx that are not a plain drawn
+   * stroke. Everything else in that figure is `.figure-stroke` above, so the
+   * range, the rails and the three step nodes are already finished by ~1.2s
+   * and these two arrive on top of them in order:
+   *
+   *   0.4s  the marker appears at the top of the range and starts hunting
+   *   2.2s  it lands on centre and stops, for good
+   *   2.25s the number is written under it and the bracket closes
+   *
+   * Once, on arrival, and never again. A figure that keeps moving after it has
+   * made its point is an advert; this one settles like an instrument taking a
+   * reading, which is the register the header capsule already set.
+   *
+   * Resting state is the *finished* frame in both rules — no `data-draw` at all
+   * means no script, reduced motion, or a figure that was already on screen,
+   * and all three of those get the marker sitting on the number.
+   */
+  .price-settle {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 0;
+  }
+
+  [data-draw='pending'] .price-settle {
+    stroke-dashoffset: 1;
+  }
+
+  [data-draw='in'] .price-settle {
+    stroke-dashoffset: 0;
+    transition: stroke-dashoffset 520ms cubic-bezier(0.16, 1, 0.3, 1);
+    transition-delay: calc(2250ms + var(--stroke, 0) * 70ms);
+  }
+
+  [data-draw='pending'] .price-seek {
+    opacity: 0;
+  }
+
+  [data-draw='in'] .price-seek {
+    animation: price-seek 1800ms cubic-bezier(0.65, 0, 0.35, 1) 400ms 1 both;
+  }
+
+  /* Every move below is either horizontal or vertical and never both, which is
+     the same right-angle grammar the drawings are built from — and it is also
+     what keeps the marker off the rails. A diagonal between two levels crosses
+     a step while it is still at the *wider* level's offset, so the first
+     version of this clipped the right rail by 7 units on the way down. Sweep,
+     then drop. Never both.
+
+     The offsets are the funnel's own half-widths, less the room a 1.5 stroke
+     needs; a drop only ever happens at an offset that is legal in the band
+     above *and* the band below it:
+
+       level  centre y   rails      half-width   sweep to   drop at
+       1        60       24…216        96          ±78        -44
+       2       118       60…180        60          ±44        +20
+       3       174       88…152        32          ±20        -10
+       4       218      100…140        20          ±10          0
+
+     Move a rail in PriceRange.tsx and this table moves with it. These are not
+     decorative easing values, and `hyperframes`-style eyeballing them is what
+     produced the clipped version.
+
+     The translate is written relative to where the marker is *drawn*, which is
+     its resting place on the number — so the last keyframe is 0,0 and the
+     figure is correct with the animation removed entirely. */
+  @keyframes price-seek {
+    0% {
       opacity: 0;
-      transform: translateY(-4px) scale(0.97);
+      transform: translate(78px, -192px);
+    }
+    6% {
+      opacity: 1;
+      transform: translate(78px, -192px);
+    }
+    22% {
+      transform: translate(-78px, -192px);
+    }
+    30% {
+      transform: translate(-44px, -192px);
+    }
+    38% {
+      transform: translate(-44px, -134px);
+    }
+    50% {
+      transform: translate(44px, -134px);
+    }
+    56% {
+      transform: translate(20px, -134px);
+    }
+    62% {
+      transform: translate(20px, -78px);
+    }
+    72% {
+      transform: translate(-20px, -78px);
+    }
+    77% {
+      transform: translate(-10px, -78px);
+    }
+    82% {
+      transform: translate(-10px, -34px);
+    }
+    90% {
+      transform: translate(10px, -34px);
+    }
+    94% {
+      transform: translate(0, -34px);
+    }
+    100% {
+      opacity: 1;
+      transform: translate(0, 0);
     }
   }
 
-  @keyframes menu-out {
-    to {
-      opacity: 0;
-      transform: translateY(-2px) scale(0.98);
-    }
+  /* ---- The header menu's rows ------------------------------------------
+   * Staggered on the way in so the panel reads as a list being dealt out, and
+   * unstaggered on the way out — closing is one object leaving, not five.
+   * Vertical only: nothing here needs mirroring.
+   */
+  .menu-row {
+    opacity: 0;
+    translate: 0 -6px;
+    transition:
+      opacity 260ms ease,
+      translate 260ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  [data-menu='open'] .menu-row {
+    opacity: 1;
+    translate: 0 0;
+    transition-delay: calc(var(--row, 0) * 45ms);
   }
 }

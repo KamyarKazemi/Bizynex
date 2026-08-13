@@ -179,6 +179,344 @@ draft: it is waiting on a real measurement, not on words.
 
 ---
 
+## 3c. The 2026-08-12 pass — emphasis, the header menu, the service pages
+
+Three changes, asked for together, and the brief was explicitly *not* to stay
+inside the motion restraint in `CLAUDE.md` §8 and `CONTEXT.md` §7. The hard
+constraints were kept: self-hosted, RTL-first, reduced motion honoured, contrast
+floor measured, nothing readable withheld behind script. What was spent is the
+motion budget and some of the teal budget, deliberately and in the open.
+
+**Measured after, not estimated** (2026-08-12):
+
+| Command | Result |
+|---|---|
+| `npx tsc -b` | exit 0 |
+| `npx eslint .` | exit 0 |
+| `npm run build` | exit 0 |
+| `npm run check:contrast` | exit 0 — 32 pair checks, thinnest 4.30:1 |
+| `npm run check:weight` | exit 0 — worst page 55.1 KiB of 60 |
+
+| Bundle (gzipped) | Before | After first pass | After the service-page pass |
+|---|---|---|---|
+| Entry chunk | 81,503 B | 84,168 B | 84,838 B |
+| All JS except the three.js chunk | 117,382 B | 120,047 B | 120,718 B = **117.9 KiB** (budget 120 KiB) |
+
+Note the "before" column: it is **today's** measurement of the untouched tree,
+not the 114,819 B recorded on 2026-08-10. The baseline had already drifted
++2.5 KiB from dependency updates before any of this was written. Both passes
+together add 3.3 KiB and leave **2.1 KiB of headroom**, which is thin.
+
+⚠ **Read the budget as 120 KiB, and decide that properly before the next
+feature.** 120,718 B is under 120 KiB (122,880 B) and over a decimal 120 kB.
+`CLAUDE.md` §6 says "120 KB" and this document has always converted to KiB, so
+the KiB reading is the one in force — but it is now the only reading that
+passes, which makes it a decision rather than a formatting habit. The cheapest
+place to buy headroom back is splitting `ServicePage` out of the entry chunk:
+a home-page visitor never needs it and vice versa.
+
+### What changed
+
+1. **Important phrases draw themselves on.** A teal rule sweeps under a marked
+   phrase and a wash follows it in, once, when the reader reaches it. Two
+   registered custom properties rather than one `background-size` transition,
+   because the rule and the wash are deliberately out of step.
+
+   The phrase list is `src/content/emphasis.ts` and **`fa.ts` was not touched by
+   it**. That is not tidiness: `jsonLd.ts` and `meta.ts` copy those same strings
+   into the structured data and into `<title>`, so markup in the copy would end
+   up in a search result. Each entry carries its sentence *and* its phrases, and
+   `unmatchedMarks()` — wired into the prerender the same way `emptyCopySlots`
+   is — fails the build and names any phrase a copy edit has left pointing at
+   nothing. A ZWNJ is invisible in a diff; this is what catches it.
+
+   `--color-mark` is a flat colour rather than teal at low alpha, so `ink` on it
+   is a pair `check:contrast` can measure: 12.18:1 light, 9.46:1 dark.
+
+2. **The header capsule opens the four service pages.** «خدمات» is now a
+   `<button aria-expanded>`; the destination it used to have is the first row
+   inside the panel. The capsule still means one thing — where you are — and
+   the panel is a second surface below it, so the note in `Footer.tsx` that
+   argued against this is answered rather than ignored.
+
+   The whole panel is in the prerendered HTML of every page, `inert` when
+   closed, which is why every page now carries a real link to every other page
+   in its markup. Closed is `opacity-0`, **not** `invisible`: `visibility` is
+   transitionable and computes as `hidden` for the first frame, so the
+   down-arrow's "open, then move focus in" would have called `focus()` on an
+   element the browser still considered unfocusable. That cost an hour; it is
+   commented in place.
+
+3. **The four service pages are documentation pages now.** They were an `h1`
+   and three paragraphs. They are now: a breadcrumb matching the
+   `BreadcrumbList` exactly *(both the breadcrumb and the page's own callout
+   numeral were removed in the third pass below — the numeral is the part that
+   was wrong)*, a callout numeral in the margin, a numbered index
+   that follows you down the page on `useActiveSection` — the same hook the
+   header capsule uses — numbered sections, the other three pages, and the one
+   action. The opening band and the body sit on the same declared grid, so the
+   `h1` and the first `h2` share a start edge to the pixel (measured: 984.5px
+   at 1440).
+
+   `Reveal` never hides anything that was on screen when the page loaded, and
+   the hidden state is only ever added by script in a browser. Server-rendered
+   HTML contains no hidden content, so a blocked bundle is still the finished
+   page.
+
+### The second pass on the service pages, same day
+
+A follow-up brief: overhaul the four pages again, **appearance and styles only —
+no content changes**. Nothing below writes, edits, reorders or truncates a
+Persian word; every new decision lives outside `fa.ts` in
+`src/content/pageLayout.ts`, which holds no words at all.
+
+- **The limit section is no longer styled like the others.** Each page has one
+  section that says where this service does not work — `COPY-BRIEF.md` calls it
+  the beat no competitor writes — and it was rendering identically to every
+  other paragraph. It is now a bounded block on `surface`, capped at the
+  reading measure plus its own padding, with the same 2px accent rule on its
+  start edge that the index uses to say "here". `/delivery` has none and is
+  marked as having none rather than being made to have one.
+- **Section headers use the home page's measure line**: callout, heading, and a
+  hairline running off to the end of the row. One structural device, repeated.
+  Each heading is now a link to its own section, and its accessible name is the
+  heading text — which is why there is no ¶ glyph needing a label of its own.
+- **The index reports progress**, filling one section at a time as the reader
+  goes. It fills in whole items rather than by scroll fraction so the fill
+  always lands on a boundary with nothing measured.
+- **Two drawn figures**, on `/automation` and `/app` only — the two pages where
+  a picture carries an argument. Five hand-made passes above one line that
+  runs; and the fork between something opened again and again and something
+  visited once. They carry **no words**: a labelled diagram is a second piece
+  of copy written by whoever drew it. Both are `aria-hidden`, each sits in the
+  section whose paragraph is already its caption, and every path is drawn by
+  default — the stroke animation is only ever added to a figure that was off
+  screen. `pathLength="1"` is what makes a 20px tick and a 200px run take the
+  same time to draw.
+- **Every band sits on one grid.** The opening, the sections, the sibling links
+  and the closing action all start on the same edge, and the sibling links now
+  have the same anatomy as the header menu's rows, because they are the same
+  four pages and two presentations of one set is one set learned twice.
+- `useArrival` now holds the "only stage something that is off screen" logic
+  that `Reveal` and the figures both need — the third use of it, which is when
+  `CLAUDE.md` §1 says to abstract, not before.
+
+### Verified in a real browser, not assumed
+
+Chromium, against `vite preview`, at 360 / 768 / 1440 in both themes:
+
+- Zero console errors or warnings on `/`, `/automation` and `/delivery` at all
+  three widths; zero horizontal overflow.
+- Keyboard: Tab → «خدمات», ArrowDown → first menu row, Tab → second row, Escape
+  → back on the button with `aria-expanded="false"`. The closed panel is out of
+  the tab order.
+- `prefers-reduced-motion: reduce` — every mark fully drawn, all ten figure
+  strokes drawn, no element left in the pending reveal state.
+- JavaScript disabled — the page reads complete, the figures are finished
+  drawings, the section headings are still links, the menu is `inert` and
+  invisible, and the footer still carries all four links.
+- Focus ring on a section heading link measured at 2px solid `#0e7a72`.
+
+Still not measured, and still needing a real deploy: Lighthouse and field Core
+Web Vitals.
+
+### The third pass on the service pages, same day — the top of the page
+
+Asked for: clear the trail off the top of every page, and fix whatever else is
+wrong with the four. No Persian was written or reworded; two now-unrendered
+`fa.ui` *keys* were deleted (`breadcrumb`, `home`), which is the same rule §3a
+held.
+
+- **The margin column carried two different counts.** The opening band showed
+  the page's own number among the four service pages — «۰۴» on `/delivery` —
+  on the same text edge, in the same style, in the same column as the section
+  numerals below it. That column then read ۰۴ ۰۱ ۰۲ ۰۳ ۰۴ ۰۵ ۰۶, in which the
+  two «۰۴»s are a page and a section. The page number is gone from the page;
+  it stays in the header menu and the sibling links, where the four are listed
+  together and it counts something the reader can see. The numerals on a
+  service page are now one sequence: its sections, then the action after them.
+- **The visible breadcrumb is gone.** «صفحهٔ اصلی / <page>» said what the
+  header, the footer and the URL each already say, and it sat in the one place
+  on the page that should open on the heading. The `BreadcrumbList` in
+  `src/content/jsonLd.ts` **stays** — it is what a crawler prints above a
+  result in place of a bare URL, it describes a hierarchy the site genuinely
+  has, and with the visible trail gone there is nothing left for it to
+  disagree with. Reversing this again means putting the trail back, not
+  deleting the node.
+- **A draft can no longer be listed.** `publishedRoutes()` keeps drafts in
+  `npm run dev` so the founder can open one, and `servicePageRoutes()` was
+  handing `/work` — whose title is still `''` — to the header menu, the footer
+  and the sibling grid. All three rendered a link with nothing inside it, and
+  because the callouts are positional, a stray «۰۵» beside the blank card.
+  `servicePageRoutes()` now drops a route with no title. Production was never
+  affected; the dev view now matches it, numerals included.
+- **`aria-current="location"`**, not `"true"`, on the in-page index rows.
+
+Measured after (2026-08-12): `npx tsc -b` exit 0 · `npx eslint .` exit 0 ·
+`npm run build` exit 0 · `npm run check:contrast` exit 0 · `npm run
+check:weight` exit 0. Entry chunk 85.75 kB → **85.66 kB** gzipped, and each
+service page lost ~0.1 KiB of readable-without-JS payload; worst page is still
+`index.html` at 55.3 KiB.
+
+Verified in the browser at 360 / 1440, both themes, on all four pages: no
+horizontal overflow, no console errors, the `h1`, every `h2`, the sibling band
+and the closing action all still start on one edge (measured 984px at 1440),
+the empty margin cell is `display: none` below `lg` so the mobile stack opens
+on the heading, and zero empty links anywhere in the document. Built output
+checked directly: no «مسیر صفحه» in `dist/delivery.html`, `BreadcrumbList`
+still present, canonical unchanged, no `/work` link.
+
+**Not re-verified in this pass** (untouched by it, verified in the second):
+keyboard traversal of the header menu, `prefers-reduced-motion`, and the
+JavaScript-disabled read.
+
+### The fourth pass, same day — «صفحه‌های دیگر» centred, and a drawing per section
+
+Asked for: centre the «صفحه‌های دیگر» band and put it on the home page too, and
+give every section a diagram. No Persian was written or reworded; no new copy
+string was added — the band's heading is the `fa.ui.otherPages` that already
+existed.
+
+- **The band is one component now**, `src/components/OtherPages.tsx`, rendered
+  by both `ServicePage` and `HomePage`. `CLAUDE.md` §1 says no abstraction
+  until the third occurrence and this is the second; it is a component anyway
+  because it is not an abstraction over variation — it is one block that has to
+  stay *identical* in two places, and thirty duplicated lines of JSX is the
+  version of that which drifts. The column count follows the card count (three
+  on a service page, four on home) and both class strings are written out in
+  full, because Tailwind scans source text.
+- **Centred, and off the two-column grid.** On a service page the band used to
+  sit in the reading column, leaving the entire 13rem margin column empty
+  beside it and hanging the block visibly off one side. It now spans the
+  container and centres, cards included. This is the one element on the site
+  allowed to break the start-alignment rule: it is not part of the argument
+  above it, it is the way out of it.
+- **The home page carries it, after «خدمات».** That fixes something real: the
+  four service pages were reachable from the header panel and the footer and
+  from nothing a reader scrolling the home page would ever meet. It is
+  deliberately *not* a `Section` and not numbered — `SECTION_IDS` is the page's
+  seven-part argument and `jsonLd.ts` builds `hasPart` by walking it, so an
+  eighth entry there would claim the navigation is a chapter. No structured
+  data changed.
+- **Fourteen drawings, one per section**, up from two. This reverses
+  `pageLayout.ts`'s "one per page at most, and only where a picture argues" on
+  request, and the reversal is recorded in that file rather than quietly
+  applied. `figure: {section, kind}` became `figures: FigureKind[]`, parallel
+  to the section list. The restraint moves down a level rather than being
+  dropped: every drawing carries one idea from its own section, still carries
+  **no words**, is still `aria-hidden` with the section's paragraph as its
+  caption, and still passes the test that deleting every figure loses nothing
+  the page says. Same vocabulary throughout — right angles and 45° diagonals,
+  one stroke weight, an 8×8 square for a node, at most one accented line, read
+  right to left.
+
+  What is genuinely spent is quiet. Fourteen drawings is more ink than
+  `CONTEXT.md` §7 would have chosen; it was a decision, not a drift.
+
+Measured after (2026-08-12): `npx tsc -b` exit 0 · `npx eslint .` exit 0 ·
+`npm run build` exit 0 · `npm run check:contrast` exit 0 — 32 pairs, thinnest
+4.30:1 · `npm run check:weight` exit 0.
+
+| | Third pass | After this one |
+|---|---|---|
+| Entry chunk (gzip) | 85,628 B* | **86,600 B** |
+| JS excl. three.js chunks | — | **91,858 B = 89.7 KiB** (budget 120 KiB) |
+| Worst page, readable without JS | 55.3 KiB | **55.4 KiB** (budget 60) |
+| Service pages | 49.7–50.0 KiB | **50.1–50.5 KiB** |
+
+\* The JS figure is measured here as gzip level 9 over `dist/assets/*.js` with
+`wordmark`, `HeroScene` and `OvertureScene` excluded as the three.js chunks.
+That is a **different set** from the 120,718 B recorded for the second pass,
+which the §3c note flagged as leaving only 2.1 KiB of headroom — on this
+measurement there is ~33 KiB, and even counting `HeroScene` in it is 111.6 KiB.
+Before the next feature, settle which set the 120 KiB budget covers; the two
+readings disagree by more than any single change is likely to cost.
+
+Verified in the browser at 360 and 1440, both themes, on all five pages: every
+one of the 14 figures renders with its geometry inside its own viewBox
+(measured per path with `getBBox`), section count equals figure count on all
+four service pages, the band centres in the container, its grid is 4 columns on
+home / 3 on a service page / 1 at 360px, no horizontal overflow anywhere, no
+console errors. Built output checked directly: 5 SVGs on `/delivery`, 3 on each
+of the other three, the centred container and the correct column variant on
+every page, and `hasPart` unchanged.
+
+**Not re-verified in this pass:** keyboard traversal of the header menu,
+`prefers-reduced-motion` across the twelve new figures, and the
+JavaScript-disabled read. The figures use the same `useArrival` path the two
+existing ones do, which is why this is a low risk rather than none.
+
+---
+
+## 3d. The 2026-08-13 pass — the empty column beside «هزینه و زمان»
+
+The home page's prose sections are the reading measure inside a 76rem page, so
+above `lg` each one leaves ~34rem of blank paper beside it. That is not
+restraint, it is an unfinished column, and the pricing section was the one
+called out. `src/components/PriceRange.tsx` now fills it.
+
+**What it draws, and why it is not decoration.** `fa.pricing` makes one
+argument: a public range is either so wide it says nothing or puts you in a
+category you are not in, so we publish none — three things move the number, and
+what you get is a figure in writing that then stops moving. That is a shape:
+
+- the wide span at the top is the published range, at the width that says
+  nothing;
+- the rails close inward in **exactly three steps**, a node sitting on each —
+  the same three drivers the paragraph names, and the same count, so the drawing
+  and the sentence can be checked against one another;
+- a marker hunts across the range and each pass is shorter than the last,
+  because the rails have closed behind it. **The amplitude is the argument**;
+- it lands, the number is written under it, and a bracket closes. Nothing moves
+  again.
+
+Wordless and `aria-hidden` like every other drawing here, with the paragraph
+beside it as its caption. Delete it and the section loses nothing it says.
+
+**The motion.** ~2.8s, once, on arrival, and never again — a figure that keeps
+moving after it has made its point is an advert. Static parts reuse the existing
+`.figure-stroke`; the only new CSS is `.price-settle` (the number and its
+bracket, delayed past the landing) and one `@keyframes`. No new dependency, no
+JavaScript beyond the `useArrival` the drawings already use.
+
+Every move in the keyframes is horizontal **or** vertical, never both. That is
+the site's right-angle grammar, and it is also load-bearing: the first version
+interpolated diagonally between levels and **clipped the right rail by 7.4
+units** on the way down, because a diagonal crosses a step while still carrying
+the wider level's offset. Caught by seeking the animation with
+`getAnimations()` and measuring the marker against the rails every 10ms — not
+by looking at it. The offsets are the funnel's own half-widths, tabulated in
+`src/index.css` beside the keyframes; minimum clearance is now **10 units**, at
+the level-3 drop, exactly where the table predicts.
+
+**Resting state is the finished frame.** No `data-draw` — JavaScript blocked,
+reduced motion, or a figure already on screen at load — leaves the marker
+sitting on the number and the bracket closed. Verified against a freshly
+injected element with no transition history, in both the bare and `pending`
+cases. All 12 paths are in the prerendered HTML.
+
+Measured after (2026-08-13): `npx tsc -b` exit 0 · `npx eslint .` exit 0 ·
+`npm run build` exit 0 · `check:contrast` exit 0 · `check:weight` exit 0.
+
+| | Before | After |
+|---|---|---|
+| Entry chunk (gzip) | 86,600 B | **86,890 B** |
+| JS excl. three.js chunks | 91,858 B | **92,140 B = 90.0 KiB** (budget 120) |
+| CSS (gzip) | 8.20 kB | **8.44 kB** |
+| `index.html`, readable without JS | 55.4 KiB | **55.9 KiB** (budget 60) |
+
+Verified at 360 and 1440 in both themes: the prose column stays at the reading
+measure (544px) on the same start edge as the `h2`, the figure centres in the
+480px that was empty and its vertical centre matches the prose's to the pixel,
+it stacks below the text at 360 with no overflow, and both themes resolve to the
+contrast-safe tokens (rails `ink-soft`, accent `#0e7a72` light / `#4fd6c7` dark).
+
+**Still empty, and the same shape of problem:** `Problem`, `Delivered` and
+`Contact` are also measure-width prose in a 76rem page. Each needs its own idea
+rather than a repeat of this one, so none was invented here.
+
+---
+
 ## 4. Blocked on a human — an agent cannot do these
 
 Ordered by cost of getting them wrong.
@@ -188,6 +526,16 @@ Ordered by cost of getting them wrong.
       before its overhaul. `COPY-BRIEF.md` lists the four sentences to check
       hardest and the four things the draft is least sure about. `/delivery` is
       the strongest page; correct that one first.
+- [ ] **The emphasis marks are an editorial call, not a technical one.**
+      `src/content/emphasis.ts` decides which words the page leans on, and
+      emphasis is voice. No Persian was written or altered to build it, but
+      choosing what to emphasise is a founder's judgement. `COPY-BRIEF.md` has
+      the two rules that were held while choosing, and moving a mark is a
+      one-line edit.
+- [ ] **Six new strings.** Four menu blurbs, one per service page, plus six
+      `fa.ui` labels. The blurbs are new Persian written by Claude under the
+      same «Claude drafts, founder corrects» arrangement as the pages
+      themselves — they are listed in `COPY-BRIEF.md` for a read-through.
 - [ ] **The case study (`/work`).** Blocked on a real measured outcome, not on
       copy. `COPY-BRIEF.md` §05 lists what to capture while the next project
       runs rather than reconstructing it afterwards.
