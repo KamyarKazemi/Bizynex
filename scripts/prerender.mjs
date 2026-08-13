@@ -108,25 +108,44 @@ const withPageHead = (html, route) => {
   const escape = (value) =>
     value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
 
+  /**
+   * `<meta name="x" content="` with any run of whitespace between the parts.
+   *
+   * Written as a builder rather than nine hand-typed regexes because the nine
+   * hand-typed ones were wrong in the same way: they matched attributes
+   * separated by a single literal space, and a formatter run over index.html
+   * put each attribute on its own line. Every rewrite below then failed to
+   * match, and the build stopped — correctly, but for a reason that had
+   * nothing to do with anything anybody had changed on purpose.
+   *
+   * A code formatter must not be able to break a deploy. Whitespace between
+   * attributes is not information, so nothing here is allowed to depend on it.
+   */
+  const tag = (element, attribute, value, target) =>
+    new RegExp(
+      /* `[^>]*?` rather than `\s+`, because the identifying attribute is not
+         always the first one — `<link rel="alternate" hreflang="x-default"
+         href="…">` names itself by its second. It cannot run past the end of
+         the tag: `>` is the one character it will not cross. */
+      `(<${element}[^>]*?\\s${attribute}="${value}"[^>]*?\\s${target}=")[^"]*(")`,
+    );
+
   const rewrites = [
     [/<title>[\s\S]*?<\/title>/, `<title>${escape(title)}</title>`],
-    [
-      /(<meta\s+name="description"\s+content=")[\s\S]*?(")/,
-      `$1${escape(description)}$2`,
-    ],
-    [/(<link rel="canonical" href=")[^"]*(")/, `$1${canonical}$2`],
-    [/(<meta property="og:url" content=")[^"]*(")/, `$1${canonical}$2`],
-    [/(<meta property="og:title" content=")[\s\S]*?(")/, `$1${escape(title)}$2`],
-    [
-      /(<meta\s+property="og:description"\s+content=")[\s\S]*?(")/,
-      `$1${escape(description)}$2`,
-    ],
-    [
-      /(<meta\s+name="twitter:description"\s+content=")[\s\S]*?(")/,
-      `$1${escape(description)}$2`,
-    ],
-    [/(<link rel="alternate" hreflang="fa-IR" href=")[^"]*(")/, `$1${canonical}$2`],
-    [/(<link rel="alternate" hreflang="x-default" href=")[^"]*(")/, `$1${canonical}$2`],
+    [tag('meta', 'name', 'description', 'content'), `$1${escape(description)}$2`],
+    [tag('link', 'rel', 'canonical', 'href'), `$1${canonical}$2`],
+    [tag('meta', 'property', 'og:url', 'content'), `$1${canonical}$2`],
+    [tag('meta', 'property', 'og:title', 'content'), `$1${escape(title)}$2`],
+    [tag('meta', 'property', 'og:description', 'content'), `$1${escape(description)}$2`],
+    /* twitter:title was missing from this list until now, so every service
+       page shipped the home page's title to anything reading Twitter's tags.
+       It is the same defect the rest of this list exists to prevent, and it
+       survived only because og:title above happens to be the fallback when
+       twitter:title is *absent* — which it is not. */
+    [tag('meta', 'name', 'twitter:title', 'content'), `$1${escape(title)}$2`],
+    [tag('meta', 'name', 'twitter:description', 'content'), `$1${escape(description)}$2`],
+    [tag('link', 'hreflang', 'fa-IR', 'href'), `$1${canonical}$2`],
+    [tag('link', 'hreflang', 'x-default', 'href'), `$1${canonical}$2`],
     /* Not a head *tag*, but the same kind of thing and it fails the same way:
        index.html is home's head and its `@view-transition` block is authored
        as home's. Left alone, every service page would tell the browser it was
