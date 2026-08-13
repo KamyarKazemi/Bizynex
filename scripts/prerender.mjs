@@ -127,6 +127,13 @@ const withPageHead = (html, route) => {
     ],
     [/(<link rel="alternate" hreflang="fa-IR" href=")[^"]*(")/, `$1${canonical}$2`],
     [/(<link rel="alternate" hreflang="x-default" href=")[^"]*(")/, `$1${canonical}$2`],
+    /* Not a head *tag*, but the same kind of thing and it fails the same way:
+       index.html is home's head and its `@view-transition` block is authored
+       as home's. Left alone, every service page would tell the browser it was
+       the home page arriving, and the direction of the page transition would
+       be backwards on four pages out of five. See the note beside the rule in
+       index.html. */
+    [/(@view-transition\s*\{[^}]*?types:\s*)home(\s*;)/, `$1service$2`],
   ];
 
   let out = html;

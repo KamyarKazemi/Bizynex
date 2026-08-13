@@ -73,5 +73,24 @@ export const withThemeWave = (change: () => void, origin?: WaveOrigin) => {
   root.style.setProperty('--theme-wave-radius', `${radius}px`);
   root.style.setProperty('--theme-wave-duration', `${waveMs}ms`);
 
-  document.startViewTransition(change);
+  /* The marker that says *which* view transition this is.
+   *
+   * There are two of them on this site now — this one, and the cross-document
+   * one that runs between pages — and they share one set of
+   * `::view-transition-*` pseudo-elements. Without this attribute the wave's
+   * rules in index.css are simply "how a view transition looks here", so every
+   * page navigation would open through a circular mask centred on nothing, at
+   * whatever radius the last toggle happened to leave behind.
+   *
+   * Set before `startViewTransition` because the old snapshot is taken inside
+   * that call, and removed on `finished` — which resolves after the animation
+   * has ended and the pseudo-elements are gone, so nothing can be mid-wave when
+   * the styling that describes it disappears. `finally`, not `then`: a
+   * transition can be skipped, and a skipped wave must still clean up after
+   * itself or every later navigation inherits the mask. */
+  root.dataset.themeWave = '';
+
+  document
+    .startViewTransition(change)
+    .finished.finally(() => delete root.dataset.themeWave);
 };

@@ -167,6 +167,24 @@
           Both are hints rather than proof, and that is the right trade here:
           the cost of a false positive is one visitor missing an animation.
         */
+        /*
+          Refuse the page transition only when the page is about to cover
+          itself anyway.
+
+          `pagereveal` fires in the *incoming* document before its first
+          render, which is the only moment anything knows both that a
+          transition is running and what this page is about to look like.
+          Registered before every early return below, because it applies on
+          every page and not only on the ones that put a cover up: reaching
+          home from a service page without having seen the opening lands here,
+          and sliding a card into the front of the room is two entrances
+          fighting. Skipping leaves an ordinary navigation, which is what an
+          opening already is.
+        */
+        window.addEventListener('pagereveal', function (event) {
+          if (event.viewTransition && root.dataset.intro) event.viewTransition.skipTransition();
+        });
+
         var ua = navigator.userAgent || '';
         var isNotAPerson =
           navigator.webdriver === true ||
@@ -182,6 +200,23 @@
         }
 
         if (isNotAPerson || seen || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+        /*
+          Only the home page opens with anything.
+
+          This cover exists so an opening does not drop on top of a page that
+          has already painted — and the opening only ever runs on `/`. On a
+          service page React calls removeCover() the moment it mounts, so the
+          panel was pure cost there: a navy frame in front of the page for
+          exactly the visitor the service pages are written for, the one
+          arriving from a search result.
+
+          It matters more now that pages transition into one another. A page
+          whose first painted frame is an opaque rectangle is the frame the
+          browser hands to the transition, so without this the reward for
+          following a link would be a cross-fade into navy.
+        */
+        if (location.pathname !== '/' && location.pathname !== '/index.html') return;
 
         root.dataset.intro = 'pending';
 
@@ -217,6 +252,72 @@
       loads. If those two tokens change, change them here too.
     -->
     <style>
+      /*
+        The page-to-page transition opt-in, and it has to be *here* rather than
+        in index.css.
+
+        A view transition is only built if both documents have opted in before
+        the incoming one paints its first frame. In `npm run dev` the stylesheet
+        is injected by JavaScript, which is always later than that — so with the
+        rule in index.css the transition simply never ran in development, and
+        the first thing anyone checking the work would see is nothing at all.
+        The same reasoning as the cover styles below, and the same fix.
+
+        Only the opt-in is here. What the transition looks like is the
+        `::view-transition-*` block in src/index.css, which is a linked,
+        render-blocking stylesheet in the built pages and therefore always in
+        effect in time. If it is ever late — dev, a cold cache — the browser
+        falls back to its own cross-fade, which is a weaker version of this
+        rather than a broken one.
+
+        `types: home` is correct as authored, because this file *is* the home
+        page's head. scripts/prerender.mjs rewrites it to `service` for the
+        four service pages, the same way it rewrites the canonical and the
+        title, and throws if it cannot find it. The incoming document's types
+        are the ones in force during a cross-document transition, so this is
+        how a navigation says whether it went deeper into the site or came
+        back out — see `:active-view-transition-type()` in src/index.css.
+      */
+      @view-transition {
+        navigation: auto;
+        types: home;
+      }
+
+      /*
+        The page's own background, before any stylesheet exists.
+
+        This is what stops a navigation flashing white. A browser paints its
+        default canvas — white — until something tells it otherwise, and the
+        first frame of an incoming document is exactly the frame a view
+        transition captures and then animates for 440ms. Without this rule a
+        link followed in `npm run dev` produced one entirely blank white frame
+        and then the page, which reads as the browser reloading rather than as
+        a page arriving. It was visible on a screen recording as a single frame
+        at 221 luminance against a page sitting at 20.
+
+        In a built page the real stylesheet is render-blocking and would have
+        set this anyway; here it is a frame earlier, which is the frame that
+        was wrong. It costs two declarations and it removes a class of flash
+        rather than one instance of it — the same reasoning that put the two
+        `theme-color` metas above at the top of this file.
+
+        Keyed to `data-theme` because the script further up has already set it
+        from storage, synchronously, before this style is even parsed. The
+        media query is the no-JavaScript path, where nothing sets the
+        attribute at all.
+      */
+      html {
+        background-color: #ffffff;
+      }
+      html[data-theme='dark'] {
+        background-color: #0a1a28;
+      }
+      @media (prefers-color-scheme: dark) {
+        html:not([data-theme='light']) {
+          background-color: #0a1a28;
+        }
+      }
+
       #intro-cover {
         display: none;
       }
@@ -260,6 +361,39 @@
       `npm run dev` leaves it as a comment. That is fine — nothing crawls dev.
     -->
     <!--seo-jsonld-->
+
+    <!--
+      Fetch the next page while the pointer is still travelling to the link.
+
+      A cross-document view transition holds the *old* page on screen, frozen,
+      until the new document is ready to render. That wait is the whole of the
+      delay between pressing a link and the card starting to move — the
+      animation itself has not begun yet. On a prerendered page from a static
+      host the wait is around 10ms and invisible; on a slow Iranian connection,
+      which CLAUDE.md section 2 says to assume, it is not.
+
+      `moderate` is hover and pointer-down, not viewport visibility: nothing is
+      fetched until the visitor has shown intent, which is the only version of
+      this that is honest about someone else's bandwidth. Four pages of 11KB
+      are not a burden; four pages fetched because they happened to scroll past
+      would be.
+
+      `prefetch` and deliberately **not** `prerender`. Prerender would execute
+      the page — its scripts, its capability detection, and @vercel/analytics —
+      in the background, which would report page views for pages nobody
+      visited. A fetched document is inert until it is navigated to.
+    -->
+    <script type="speculationrules">
+      {
+        "prefetch": [
+          {
+            "source": "document",
+            "where": { "href_matches": "/*" },
+            "eagerness": "moderate"
+          }
+        ]
+      }
+    </script>
 
     <!-- Only the body weight is preloaded. SemiBold is used for headings and
          can arrive a beat later without shifting the reading experience. -->

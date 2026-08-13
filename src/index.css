@@ -78,6 +78,19 @@
   initial-value: 0%;
 }
 
+/**
+ * The `@view-transition { navigation: auto }` opt-in is **not here.** It is in
+ * the inline critical `<style>` in index.html, and it has to be: the rule only
+ * counts if it is in effect before the incoming document paints its first
+ * frame, and in `npm run dev` this file arrives via JavaScript, which is later
+ * than that. See the note beside it there.
+ *
+ * What the transition looks like is the `::view-transition-*(root)` block in
+ * the base layer below, which belongs here — by the time it is needed the
+ * stylesheet has loaded, and if it somehow has not, the browser's own
+ * cross-fade stands in.
+ */
+
 @layer base {
   html {
     scroll-behavior: smooth;
@@ -180,8 +193,17 @@
     }
   }
 
-  ::view-transition-old(root),
-  ::view-transition-new(root) {
+  /* ---- The theme wave --------------------------------------------------
+   * Everything below is scoped to `[data-theme-wave]`, which src/hooks/
+   * themeWave.ts sets for exactly the length of a theme change. Two different
+   * view transitions run on this site — this one and the page-to-page one
+   * further down — and they share one set of `::view-transition-*` pseudos.
+   * Unscoped, these rules are not "the theme wave", they are "how a view
+   * transition looks here", and every navigation would open through a circular
+   * mask centred on nothing.
+   */
+  :root[data-theme-wave]::view-transition-old(root),
+  :root[data-theme-wave]::view-transition-new(root) {
     /* Both defaults exist to serve a cross-fade: a paired fade, blended so the
        two layers can overlap without darkening. Neither is wanted here, and
        the blend mode in particular would make the soft edge below glow. */
@@ -189,7 +211,7 @@
     mix-blend-mode: normal;
   }
 
-  ::view-transition-new(root) {
+  :root[data-theme-wave]::view-transition-new(root) {
     /* The new page is the layer that moves, and it grows over the old one.
        Eating the old layer away instead is the cheaper way round and it is the
        one that cannot be made to end cleanly: it leaves an opaque snapshot on
@@ -220,6 +242,219 @@
       forwards;
   }
 
+  /* ======================================================================
+   * PAGE TO PAGE — a stack of cards
+   * ======================================================================
+   *
+   * The site is five prerendered documents and no router, so moving between
+   * them is a real navigation, and a cross-document view transition is what
+   * describes it. There is no JavaScript in any of this.
+   *
+   * ## The model
+   *
+   * Each page is a card, and the site is a stack of them. Going deeper pushes
+   * a new card up over the one you were reading, which stays where it is,
+   * recedes, and dims — it did not go anywhere, it is underneath. Coming back
+   * out slides the top card off downward and lets the one beneath rise back to
+   * full size. Nothing cross-fades and nothing slides sideways: at every frame
+   * one card is in front of another, which is the only claim this makes and it
+   * happens to be true of the site's structure.
+   *
+   * That is also why the direction is not decorative. `@view-transition`
+   * carries a `types` list and scripts/prerender.mjs stamps a different one
+   * into each built page — `home` on `/`, `service` on the four. The incoming
+   * document's types are the ones in force, so the page being arrived at names
+   * the gesture, and the two gestures are exact inverses.
+   *
+   * ## What makes it feel immediate rather than slow
+   *
+   * All of the distance is spent in the first third. `cubic-bezier(0.16, 1,
+   * 0.3, 1)` is effectively an exponential-out: the card is 60% of the way
+   * home in the first 100ms and spends the rest settling. A linear or eased
+   * -in-out curve over the same 440ms reads as sluggish, because the eye
+   * measures responsiveness at the start of a movement and precision at the
+   * end. The card leaving is quicker than the card arriving — you have already
+   * decided to leave, so the site should not make you watch it.
+   *
+   * ## The two departures from CONTEXT.md section 7, both deliberate
+   *
+   * The 150-250ms motion band, and one corner radius. A card travelling a full
+   * viewport height inside 250ms is a flinch, and a card with square corners
+   * sliding over another card does not read as a card. The radius exists only
+   * while the card is moving and resolves to 0 the moment it lands, so no
+   * resting state on the site gains a second radius.
+   */
+
+  /* The void the stack sits in. Without it the receding card shrinks to reveal
+     more page underneath — paper on paper — and the whole illusion collapses,
+     because a card is only a card if you can see it end. Fixed navy in both
+     themes: this surface is behind the page rather than part of it, and it is
+     the same colour the site already uses for the opening. */
+  :root:not([data-theme-wave])::view-transition {
+    background-color: var(--color-navy-900);
+  }
+
+  /* The group is the viewport-sized frame both snapshots live in. It must not
+     animate — the cards move inside it, it does not move around them. */
+  :root:not([data-theme-wave])::view-transition-group(root) {
+    animation: none;
+  }
+
+  :root:not([data-theme-wave])::view-transition-old(root),
+  :root:not([data-theme-wave])::view-transition-new(root) {
+    /* `plus-lighter` is the default because the default transition is a
+       cross-fade, where two half-transparent layers must add up to one opaque
+       one. Here they are two opaque cards that deliberately overlap, and
+       leaving it on makes the overlap glow along every edge. */
+    mix-blend-mode: normal;
+    /* Scaling about the centre. The card recedes into the screen rather than
+       toward a corner, which is the only reading that matches "it is
+       underneath". */
+    transform-origin: 50% 50%;
+    /* The snapshot is a texture; the radius has to clip it. */
+    overflow: clip;
+  }
+
+  /* No type at all — an older browser, or a navigation that somehow carried
+     none. Treated as going deeper, which is the commoner direction here and
+     never looks wrong, only occasionally backwards.
+
+     **This has to stay above the two typed blocks.** `:root:not([attr])` and
+     `:root:active-view-transition-type(x)` have identical specificity (0,2,0),
+     so the cascade separates them on source order alone. Below them it would
+     silently win, and «coming back out» would never run — the whole stack
+     would push the same direction in both directions. */
+  :root:not([data-theme-wave])::view-transition-old(root) {
+    z-index: 0;
+    animation: stack-recede 440ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  :root:not([data-theme-wave])::view-transition-new(root) {
+    z-index: 1;
+    animation: stack-push 440ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  /* ---- Going deeper: a new card over the one you were reading ---------- */
+  :root:active-view-transition-type(service)::view-transition-old(root) {
+    z-index: 0;
+    animation: stack-recede 440ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  :root:active-view-transition-type(service)::view-transition-new(root) {
+    z-index: 1;
+    animation: stack-push 440ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  /* ---- Coming back out: the top card leaves, the one beneath returns ---- */
+  :root:active-view-transition-type(home)::view-transition-old(root) {
+    z-index: 1;
+    animation: stack-pop 380ms cubic-bezier(0.32, 0, 0.67, 0) both;
+  }
+
+  :root:active-view-transition-type(home)::view-transition-new(root) {
+    z-index: 0;
+    animation: stack-return 440ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  /* The card arriving. Full viewport height of travel, and the radius and the
+     brightness both resolve exactly as it lands rather than after — a card
+     that is still settling its corners once it has stopped moving reads as a
+     rendering artefact. */
+  @keyframes stack-push {
+    from {
+      translate: 0 100%;
+      border-radius: 20px;
+    }
+    to {
+      translate: 0 0;
+      border-radius: 0;
+    }
+  }
+
+  /* The card being covered. It does not move down or away — it stays put and
+     goes *back*, which is what makes the new card read as being in front of it
+     rather than replacing it.
+
+     The dim is 0.92 and not the 0.5 it was first written at. At 0.5 a light
+     -theme page is half navy for the whole first half of the transition, and
+     because the arriving card has not covered anything yet, that is a
+     full-screen brightness swing — a flash, not a depth cue. Depth here is
+     carried by the scale and by the void showing as a frame around the edge,
+     both of which are local. Any full-viewport change in brightness will be
+     read as the page reloading, whatever caused it. */
+  @keyframes stack-recede {
+    from {
+      scale: 1;
+      opacity: 1;
+      border-radius: 0;
+    }
+    to {
+      scale: 0.9;
+      opacity: 0.92;
+      border-radius: 20px;
+    }
+  }
+
+  /* Leaving. Accelerating rather than decelerating — `cubic-bezier(0.32, 0,
+     0.67, 0)` is an ease-in, so the card gathers speed on its way off the
+     bottom instead of drifting to a halt at an edge nobody is looking at. */
+  @keyframes stack-pop {
+    from {
+      translate: 0 0;
+      border-radius: 0;
+    }
+    to {
+      translate: 0 100%;
+      border-radius: 20px;
+    }
+  }
+
+  /* Coming back to the front. The exact inverse of `stack-recede`, and it has
+     to stay that way: these two are the same card in two directions, and if
+     the numbers ever drift apart the stack stops being a stack. */
+  @keyframes stack-return {
+    from {
+      scale: 0.9;
+      opacity: 0.92;
+      border-radius: 20px;
+    }
+    to {
+      scale: 1;
+      opacity: 1;
+      border-radius: 0;
+    }
+  }
+
+  /* ---- The header does not travel with either card ---------------------
+   *
+   * The capsule is fixed, identical on every page, and belongs to the site
+   * rather than to the document — it is the one thing that should not be on a
+   * card that recedes. Naming it lifts it out of the root snapshot; killing
+   * all three animations pins it, so the cards move underneath it.
+   *
+   * The old snapshot is dropped outright rather than cross-faded, because the
+   * capsule's width is measured after hydration: the outgoing one may have
+   * condensed onto a section while the incoming one has not, and cross-fading
+   * two different widths is a ghost. Dropping it leaves the new capsule in
+   * place for the whole transition, which is what it would have been anyway.
+   */
+  :root:not([data-theme-wave]) [data-site-header] {
+    view-transition-name: site-header;
+  }
+
+  ::view-transition-group(site-header) {
+    animation: none;
+    z-index: 3;
+  }
+
+  ::view-transition-old(site-header) {
+    display: none;
+  }
+
+  ::view-transition-new(site-header) {
+    animation: none;
+  }
+
   ::selection {
     background-color: var(--color-selection);
     color: var(--color-ink);
@@ -238,6 +473,20 @@
       animation-duration: 0.01ms !important;
       animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;
+    }
+
+    /* The universal selector above does not reach a view-transition pseudo —
+       they are not elements and `*` does not match them — so the page
+       transition has to be turned off by name. Without this it is the one
+       piece of motion on the site that ignores the setting. `none` rather than
+       a shortened duration: the snapshots then swap in a single frame, which
+       is the same thing as not having a transition at all.
+       `(*)` rather than a list of names, so a page named tomorrow cannot be
+       the one that forgot. */
+    ::view-transition-group(*),
+    ::view-transition-old(*),
+    ::view-transition-new(*) {
+      animation: none !important;
     }
   }
 }

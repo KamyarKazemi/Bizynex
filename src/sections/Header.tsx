@@ -294,6 +294,10 @@ export const Header = ({ hrefPrefix = '', currentPath }: HeaderProps) => {
             // leaving it, so the pill must not close underneath the reader.
             if (!event.currentTarget.contains(event.relatedTarget)) closeAll();
           }}
+          // Pinned across a navigation rather than fading out and back in with
+          // the rest of the page — this is the one control that belongs to the
+          // site instead of to the document. The rules are in src/index.css.
+          data-site-header
           // `relative` so the panel can hang off it. The panel is a child rather
           // than a sibling for exactly this reason: a mouse inside it is still
           // inside the pill, so reaching for a row never closes the row.
