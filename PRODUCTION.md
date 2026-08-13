@@ -17,11 +17,18 @@ attached to the project and its nameservers pointed at `ns1.vercel-dns.com` /
 
 This has moved twice, so keep the history straight rather than re-litigating it.
 The repo originally declared `bizynex.ir` while being served from the Vercel
-alias — a page that canonicalises to a domain nobody controls tells Google to
-index a URL that does not resolve, which quietly de-indexes it — so on
-2026-08-10 everything was flipped to `bizynex.vercel.app`. The domain now
-exists, so it has flipped back, and there are zero references to the alias in
-the built output (verified, not assumed).
+project alias — a page that canonicalises to a domain nobody controls tells
+Google to index a URL that does not resolve, which quietly de-indexes it — so
+on 2026-08-10 everything was flipped to that alias. The domain now exists, so
+it has flipped back.
+
+**Audited 2026-08-13.** Every absolute URL in `dist/` was extracted and grouped
+by host: the only one belonging to this site is `bizynex.ir`. On all five pages
+the canonical, `og:url`, both `hreflang`s and the JSON-LD `url` are the same
+string, and that string is in the sitemap. No page is missing from the sitemap
+and the sitemap names no page that does not exist. (`bit.ly` also appears, in
+`index-*.js`: it is Immer's minified-error link inside Redux Toolkit. Not ours,
+not a reference to anything.)
 
 The rule both moves share: **the canonical may only ever name a hostname that
 actually resolves to this site.**
@@ -100,7 +107,7 @@ and it has never been run against this tree.
 
 Nine steps, each verified before the next began.
 
-1. **Origin** — flipped everything to `bizynex.vercel.app`; removed the dead
+1. **Origin** — flipped everything to the Vercel project alias; removed the dead
    `www.bizynex.ir` redirect; dropped two `Content-Type` overrides Vercel may
    append rather than replace; gave `site.webmanifest` a cache policy; dropped
    `preload` from HSTS (nobody submitted the domain to hstspreload.org, and
@@ -643,16 +650,14 @@ Ordered by cost of getting them wrong.
 - [ ] **A real contact address.** `bizynexservices@gmail.com` is emitted twice
       in the structured data. A free-mail address on a company that owns a
       domain is a small trust signal working against you.
-- [ ] **Google Search Console**, then Bing (accepts a GSC import). On a
-      `vercel.app` alias there is no DNS to hold a TXT record, so verify by meta
-      tag or HTML file — or, better now that the domain has DNS, as a **domain
-      property** verified by TXT, which covers apex, `www` and both protocols
-      at once. Submit `https://bizynex.ir/sitemap.xml`.
+- [ ] **Google Search Console**, then Bing (accepts a GSC import). Verify as a
+      **domain property** with a TXT record — the domain has DNS now, and a
+      domain property covers the apex, `www` and both protocols in one, which
+      the URL-prefix method does not. Submit `https://bizynex.ir/sitemap.xml`.
 - [ ] **Set the apex as the primary domain in Vercel**, with `www.bizynex.ir`
       attached alongside it — and once Vercel reports Valid Configuration, add
-      the `bizynex.vercel.app` → apex redirect from §1. Until the apex is
-      primary, the dashboard and `vercel.json` disagree about which hostname is
-      canonical.
+      the last redirect from §1. Until the apex is primary, the dashboard and
+      `vercel.json` disagree about which hostname is canonical.
 - [ ] **Test `bizynex.ir` from a domestic connection**, fixed line and mobile
       data both, before it goes on anything printed. `CLAUDE.md` §2 exists
       because Iranian connections to foreign endpoints are throttled or

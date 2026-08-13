@@ -9,8 +9,8 @@ Last audit: 2026-08-07, against the current `main` working tree.
 > **2026-08-13 — the domain arrived. The origin is `https://bizynex.ir`.**
 > This has now moved twice, so the history is worth keeping straight: the
 > document originally assumed `bizynex.ir`, that was corrected on 2026-08-09 to
-> `bizynex.vercel.app` because the domain was not attached to the project, and
-> it is now `bizynex.ir` again because it *is* — nameservers pointed at
+> the Vercel project alias because the domain was not attached to the project,
+> and it is now `bizynex.ir` again because it *is* — nameservers pointed at
 > `ns1/ns2.vercel-dns.com`. `src/content/site.ts`, `index.html`,
 > `public/robots.txt` and `vercel.json` all say `bizynex.ir`, and the `www` →
 > apex redirect is back. The rule the two corrections share: **the canonical
@@ -69,13 +69,12 @@ Also set:
   the primary domain in the Vercel dashboard too, so the rule and the dashboard
   agree.
 
-  **Not yet redirected: `bizynex.vercel.app`.** That alias still serves the
-  site, which is deliberate — it is the address that works while `.ir`
-  nameservers propagate, and redirecting it to a host that is not resolving yet
-  would take the site off the internet. It costs nothing in the meantime: every
-  page it serves carries a canonical pointing at `bizynex.ir`, which is what
-  Google acts on. Add the second redirect once Vercel shows the domain as
-  Valid Configuration — the block is written out in `PRODUCTION.md` §1.
+  **One redirect is still to come**, and it is deliberately not here yet: the
+  Vercel project alias is the address that works while `.ir` nameservers
+  propagate, and redirecting it to a host that is not resolving would take the
+  site off the internet. It costs nothing to wait — every page that alias
+  serves carries a canonical pointing at `bizynex.ir`, which is what Google
+  acts on. `PRODUCTION.md` §1 has the block and the condition for adding it.
 - **Security headers** (`nosniff`, `Referrer-Policy`, `X-Frame-Options`,
   `Permissions-Policy`, HSTS). Not ranking factors, but HSTS removes an HTTP→HTTPS
   redirect hop on repeat visits, which is a real latency win.
