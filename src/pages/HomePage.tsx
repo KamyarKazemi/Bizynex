@@ -1,5 +1,6 @@
 import { Suspense, lazy } from 'react';
 import { ErrorBoundary } from '../components/ErrorBoundary';
+import { OtherPages } from '../components/OtherPages';
 import { fa } from '../content/fa';
 import { useCapabilityDetection } from '../hooks/useCapabilityDetection';
 import { useIntroGate } from '../hooks/useIntroGate';
@@ -82,6 +83,18 @@ export const HomePage = () => {
         <Hero />
         <Problem />
         <Services />
+        {/* Directly under the four service cards, because it is the same four
+            things one level deeper — the cards name each service, this is where
+            each one is argued in full. It is also the only link to those pages
+            inside the page itself: until now they were reachable from the
+            header panel and the footer and from nothing a reader scrolling the
+            home page would ever meet.
+
+            Not a `Section`, and deliberately unnumbered: SECTION_IDS is the
+            page's seven-part argument and jsonLd.ts builds `hasPart` by walking
+            it. This is navigation between two of those parts, not an eighth
+            one. */}
+        <OtherPages />
         <Process />
         <Delivered />
         <Pricing />

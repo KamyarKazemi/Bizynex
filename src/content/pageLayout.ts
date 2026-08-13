@@ -17,12 +17,60 @@ import type { ServiceRouteKey } from './routes';
  * from outside. Nothing here can change a single Persian character.
  */
 
-/** The drawings. One per page at most, and only where a picture argues. */
+/**
+ * The drawings. One per section.
+ *
+ * ## This reverses "one per page at most", on request
+ *
+ * It used to read "one per page at most, and only where a picture argues", and
+ * two pages had one. The brief now is a diagram per section, for comprehension.
+ * The restraint that produced the old rule is not thrown away, it moves down a
+ * level: each drawing still has to carry one idea from its own section, still
+ * carries **no words**, and is still `aria-hidden` with the section's paragraph
+ * as its caption. Delete every figure on the site and not one thing it says
+ * goes missing — that test is what keeps a wordless drawing honest, and it is
+ * unchanged.
+ *
+ * What is genuinely spent is quiet: fourteen drawings is more ink on the site
+ * than `CONTEXT.md` §7 would have chosen on its own. Recorded here so the next
+ * person knows it was a decision rather than a drift.
+ *
+ * ## The vocabulary every one of them is drawn in
+ *
+ * Right angles and 45° diagonals only, one stroke weight, butt caps, an 8×8
+ * square for a node, and at most one accented line — the one the section is
+ * actually about. They read right to left, because the page does. Same system
+ * as `ServiceIcon`, drawn larger. See `src/components/PageFigure.tsx`.
+ */
 export type FigureKind =
   /** Five identical hand-made passes above one line that runs. */
   | 'repetition'
+  /** Effort spent going out, and a bare return to exactly where it started. */
+  | 'payback'
+  /** A dimension line: the span someone put a number on before building. */
+  | 'measure'
+  /** A bounded system, and the step that has to leave it to get done. */
+  | 'overflow'
+  /** Three separate boxes brought down onto one line. */
+  | 'connect'
+  /** Two boxes on one baseline, one of them a fraction of the other. */
+  | 'scale'
   /** A path that forks: repeated use one way, a single visit the other. */
-  | 'decision';
+  | 'decision'
+  /** A device outside the bounded area, on a link that keeps breaking. */
+  | 'offline'
+  /** A staircase that has not stopped climbing. */
+  | 'upkeep'
+  /** What is held in your name, and the clear path out of it. */
+  | 'ownership'
+  /** One link cut, and the thing it was attached to still standing. */
+  | 'detach'
+  /** A page of ruled lines with one of them picked out. */
+  | 'document'
+  /** A bracketed window over the first stretch of a much longer run. */
+  | 'window'
+  /** A run that stops short of the line it is not allowed to cross. */
+  | 'ceiling';
 
 export type PageLayout = {
   /**
@@ -31,28 +79,46 @@ export type PageLayout = {
    * it is a list of what you receive, and there is no "but not for you" in it.
    */
   readonly limitSection: number | null;
-  /** Which section carries the drawing, and which drawing. */
-  readonly figure: { readonly section: number; readonly kind: FigureKind } | null;
+  /**
+   * One drawing per section, in section order — this array is parallel to
+   * `fa.pages[key].sections` and has to stay the same length as it. A short
+   * array is not an error: the extra sections simply render without a figure,
+   * which is the right failure for a decorative element. TypeScript cannot tie
+   * the two lengths together, so the guard is this sentence and a glance.
+   */
+  readonly figures: readonly FigureKind[];
 };
 
 export const pageLayout: Record<ServiceRouteKey, PageLayout> = {
-  /* ۰۲ «کجا جواب نمی‌دهد» is the limit. The drawing sits with ۰۱, which lists
-     the weekly hand-made work — five passes above, one run below. */
-  automation: { limitSection: 1, figure: { section: 0, kind: 'repetition' } },
+  /* ۰۲ «کجا جواب نمی‌دهد» is the limit.
+     ۰۱ the weekly hand-made work — five passes above, one run below.
+     ۰۲ the job that costs more to automate than it gives back: effort spent
+        on the way out, nothing carried on the way home.
+     ۰۳ the hours-per-month measured before anything is built. */
+  automation: { limitSection: 1, figures: ['repetition', 'payback', 'measure'] },
 
   /* ۰۳ «بزرگ‌تر از یک سایت است» is the limit: it is where the page says a
-     smaller thing may be the right thing. No drawing — the argument here is
-     about fit, and a picture of fit is a diagram of nothing. */
-  software: { limitSection: 2, figure: null },
+     smaller thing may be the right thing.
+     ۰۱ the ready-made system, and the step that leaves it for a spreadsheet.
+     ۰۲ several separate programs brought onto one line.
+     ۰۳ the two sizes on one baseline, with the smaller one accented — the page
+        says buy the smaller thing if it solves it, so the drawing says it. */
+  software: { limitSection: 2, figures: ['overflow', 'connect', 'scale'] },
 
-  /* ۰۱ «اول این را بپرسید» is both. It is the reason this page exists — it
-     argues most readers should not buy an app — and it is the one question on
-     the site that is genuinely a fork, so it is the one that draws. */
-  app: { limitSection: 0, figure: { section: 0, kind: 'decision' } },
+  /* ۰۱ «اول این را بپرسید» is the limit and the fork — the one question on the
+     site that is genuinely a decision, and the reason this page exists.
+     ۰۲ work outside the office, on a connection that keeps dropping.
+     ۰۳ the yearly step that never becomes the last one. */
+  app: { limitSection: 0, figures: ['decision', 'offline', 'upkeep'] },
 
-  delivery: { limitSection: null, figure: null },
+  /* No limit section — it is a list of what you receive. Five drawings for five
+     things, each one the thing itself rather than an argument about it. */
+  delivery: {
+    limitSection: null,
+    figures: ['ownership', 'detach', 'document', 'window', 'ceiling'],
+  },
 
   /* The case study has no copy yet. It stays in the table rather than being
      special-cased at every call site. */
-  work: { limitSection: null, figure: null },
+  work: { limitSection: null, figures: [] },
 };

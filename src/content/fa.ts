@@ -476,8 +476,6 @@ export const fa = {
      * «در یک نگاه» rather than repeating the word خدمات on its own. */
     servicePages: 'صفحه‌های خدمات',
     servicesOverview: 'خدمات، در یک نگاه',
-    breadcrumb: 'مسیر صفحه',
-    home: 'صفحهٔ اصلی',
     onThisPage: 'در این صفحه',
     otherPages: 'صفحه‌های دیگر',
     emailUs: 'ارسال ایمیل به بیزینکس',

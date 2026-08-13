@@ -276,6 +276,14 @@ export const jsonLdScript = wrap(graph);
  * sub-pages existed: the trail is now home → this page, which is the two-level
  * hierarchy Google renders in place of a bare URL. Recorded here so nobody
  * re-litigates it from the old note.
+ *
+ * It is the *only* breadcrumb now. The visible trail at the top of the page was
+ * removed — the header, the footer and the URL each already say where you are,
+ * and it was crowding the one place on the page that should open on the
+ * heading. This node stays because it is not a duplicate of anything a visitor
+ * reads: it is what a crawler prints above a result in place of a bare URL, and
+ * it describes a hierarchy the site genuinely has. Nothing here can disagree
+ * with the page, because the page no longer states it twice.
  */
 export const jsonLdScriptForPage = (page: {
   key: string;

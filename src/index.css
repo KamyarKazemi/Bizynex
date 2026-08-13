@@ -343,6 +343,119 @@
     transition-delay: calc(var(--stroke, 0) * 80ms);
   }
 
+  /* ---- The price range, closing on one number --------------------------
+   * The two parts of src/components/PriceRange.tsx that are not a plain drawn
+   * stroke. Everything else in that figure is `.figure-stroke` above, so the
+   * range, the rails and the three step nodes are already finished by ~1.2s
+   * and these two arrive on top of them in order:
+   *
+   *   0.4s  the marker appears at the top of the range and starts hunting
+   *   2.2s  it lands on centre and stops, for good
+   *   2.25s the number is written under it and the bracket closes
+   *
+   * Once, on arrival, and never again. A figure that keeps moving after it has
+   * made its point is an advert; this one settles like an instrument taking a
+   * reading, which is the register the header capsule already set.
+   *
+   * Resting state is the *finished* frame in both rules — no `data-draw` at all
+   * means no script, reduced motion, or a figure that was already on screen,
+   * and all three of those get the marker sitting on the number.
+   */
+  .price-settle {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 0;
+  }
+
+  [data-draw='pending'] .price-settle {
+    stroke-dashoffset: 1;
+  }
+
+  [data-draw='in'] .price-settle {
+    stroke-dashoffset: 0;
+    transition: stroke-dashoffset 520ms cubic-bezier(0.16, 1, 0.3, 1);
+    transition-delay: calc(2250ms + var(--stroke, 0) * 70ms);
+  }
+
+  [data-draw='pending'] .price-seek {
+    opacity: 0;
+  }
+
+  [data-draw='in'] .price-seek {
+    animation: price-seek 1800ms cubic-bezier(0.65, 0, 0.35, 1) 400ms 1 both;
+  }
+
+  /* Every move below is either horizontal or vertical and never both, which is
+     the same right-angle grammar the drawings are built from — and it is also
+     what keeps the marker off the rails. A diagonal between two levels crosses
+     a step while it is still at the *wider* level's offset, so the first
+     version of this clipped the right rail by 7 units on the way down. Sweep,
+     then drop. Never both.
+
+     The offsets are the funnel's own half-widths, less the room a 1.5 stroke
+     needs; a drop only ever happens at an offset that is legal in the band
+     above *and* the band below it:
+
+       level  centre y   rails      half-width   sweep to   drop at
+       1        60       24…216        96          ±78        -44
+       2       118       60…180        60          ±44        +20
+       3       174       88…152        32          ±20        -10
+       4       218      100…140        20          ±10          0
+
+     Move a rail in PriceRange.tsx and this table moves with it. These are not
+     decorative easing values, and `hyperframes`-style eyeballing them is what
+     produced the clipped version.
+
+     The translate is written relative to where the marker is *drawn*, which is
+     its resting place on the number — so the last keyframe is 0,0 and the
+     figure is correct with the animation removed entirely. */
+  @keyframes price-seek {
+    0% {
+      opacity: 0;
+      transform: translate(78px, -192px);
+    }
+    6% {
+      opacity: 1;
+      transform: translate(78px, -192px);
+    }
+    22% {
+      transform: translate(-78px, -192px);
+    }
+    30% {
+      transform: translate(-44px, -192px);
+    }
+    38% {
+      transform: translate(-44px, -134px);
+    }
+    50% {
+      transform: translate(44px, -134px);
+    }
+    56% {
+      transform: translate(20px, -134px);
+    }
+    62% {
+      transform: translate(20px, -78px);
+    }
+    72% {
+      transform: translate(-20px, -78px);
+    }
+    77% {
+      transform: translate(-10px, -78px);
+    }
+    82% {
+      transform: translate(-10px, -34px);
+    }
+    90% {
+      transform: translate(10px, -34px);
+    }
+    94% {
+      transform: translate(0, -34px);
+    }
+    100% {
+      opacity: 1;
+      transform: translate(0, 0);
+    }
+  }
+
   /* ---- The header menu's rows ------------------------------------------
    * Staggered on the way in so the panel reads as a list being dealt out, and
    * unstaggered on the way out — closing is one object leaving, not five.

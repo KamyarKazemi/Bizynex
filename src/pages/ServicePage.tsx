@@ -1,12 +1,13 @@
 import { useEffect, useMemo } from 'react';
 import { Action } from '../components/Action';
 import { Marked } from '../components/Marked';
+import { OtherPages } from '../components/OtherPages';
 import { PageFigure } from '../components/PageFigure';
 import { Reveal } from '../components/Reveal';
 import { emphasis } from '../content/emphasis';
 import { fa } from '../content/fa';
 import { pageLayout } from '../content/pageLayout';
-import { ROUTES, servicePageRoutes, type ServiceRouteKey } from '../content/routes';
+import { ROUTES, type ServiceRouteKey } from '../content/routes';
 import { CALLOUTS, mailtoHref, site } from '../content/site';
 import { removeCover } from '../hooks/introCover';
 import { useActiveSection } from '../hooks/useActiveSection';
@@ -43,10 +44,26 @@ const COLUMNS = 'grid gap-y-6 lg:grid-cols-[13rem_1fr] lg:gap-x-16 lg:gap-y-12';
  * The reference is a page of technical documentation, which is what CONTEXT.md
  * section 7 asks for and what these pages actually are: a named question, the
  * cases where the answer is no, and what happens first. So it is built like one
- * — a trail at the top saying where you are, a numbered index of the page's own
- * sections that follows you down it, numbered sections under drawing callouts,
- * and, at the foot, the two things a reader who finished has left to do: read
- * the sibling page or start the conversation.
+ * — a numbered index of the page's own sections that follows you down it,
+ * numbered sections under drawing callouts, and, at the foot, the two things a
+ * reader who finished has left to do: read the sibling page or start the
+ * conversation.
+ *
+ * ## The margin column carries exactly one count
+ *
+ * The page opened on a breadcrumb and on its own number among the four service
+ * pages — «۰۳» for /app, in the same margin column, on the same text edge, in
+ * the same style as the section numerals below it. That is two counts wearing
+ * one uniform: on /delivery the column read ۰۴ ۰۱ ۰۲ ۰۳ ۰۴ ۰۵ ۰۶, where the
+ * two «۰۴»s are a page and a section. So the numerals here now belong to the
+ * page's own sections and to the action that follows them, and nothing else.
+ * The page's number among the four still exists where it means something — the
+ * header menu and the sibling links, where the four are listed together.
+ *
+ * The breadcrumb went with it. The trail said "home, then this page", which the
+ * header, the footer and the URL each already say; the `BreadcrumbList` in
+ * src/content/jsonLd.ts stays, because that one is read by a crawler deciding
+ * what to print above a result and has no visible duplicate to disagree with.
  *
  * That the index is a duplicate of the headings is the point. On a phone it is
  * a two-second summary of the whole page before you commit to scrolling it; on
@@ -69,17 +86,6 @@ export const ServicePage = ({ routeKey }: ServicePageProps) => {
      path, and a second copy travelling down as a prop is a second place for
      it to be wrong. */
   const currentPath = ROUTES.find((route) => route.key === routeKey)?.path;
-
-  /* The four pages in the order the header menu and the footer list them, with
-     the number each one carries there. Keeping the number attached to the page
-     rather than to its position in this list is what stops «۰۲» meaning a
-     different page depending on which page you are standing on. */
-  const numbered = servicePageRoutes().map((route, index) => ({
-    route,
-    callout: CALLOUTS[index],
-  }));
-  const siblings = numbered.filter(({ route }) => route.key !== routeKey);
-  const ownCallout = numbered.find(({ route }) => route.key === routeKey)?.callout;
 
   useCapabilityDetection();
 
@@ -122,44 +128,15 @@ export const ServicePage = ({ routeKey }: ServicePageProps) => {
                 one line and whose content sits on another has two grids, and
                 the second one always reads as a mistake. */}
             <div className={COLUMNS}>
-              {/* The page's own callout, in the margin — the same device the
-                  home page's section headers use, and the same number this
-                  page carries in the header menu and in the footer. */}
-              {/* The transparent rule is not decoration: it puts this numeral
-                  on the exact same text edge as the numerals in the index
-                  below, which carry a real one. Without it the two sit 14px
-                  apart in the same column, which is the sort of drift
-                  CONTEXT.md section 7 is about. */}
-              <p
-                aria-hidden="true"
-                className="border-s-2 border-transparent ps-3 text-label tabular-nums text-muted"
-              >
-                {ownCallout}
-              </p>
+              {/* The margin column, held open and empty — see the note at the
+                  top of this file for why nothing is numbered here. The same
+                  placeholder the sibling band below uses: `hidden` under `lg`,
+                  so the single-column stack does not open on a blank row. */}
+              <p aria-hidden="true" className="hidden lg:block" />
 
               <div>
-                <nav aria-label={fa.ui.breadcrumb}>
-                  {/* Matches the BreadcrumbList in the structured data exactly —
-                      home, then this page, and the last crumb does not link to
-                      itself. See src/content/jsonLd.ts. */}
-                  <ol className="flex flex-wrap items-center gap-x-2 text-label text-muted">
-                    <li>
-                      <a
-                        href="/"
-                        className="underline-offset-4 transition-colors duration-200 hover:text-ink hover:underline"
-                      >
-                        {fa.ui.home}
-                      </a>
-                    </li>
-                    <li aria-hidden="true">/</li>
-                    <li aria-current="page" className="text-ink">
-                      {page.title}
-                    </li>
-                  </ol>
-                </nav>
-
                 {page.title ? (
-                  <h1 className="mt-6 max-w-measure text-display font-semibold text-ink">
+                  <h1 className="max-w-measure text-display font-semibold text-ink">
                     <Marked mark={marks.title} />
                   </h1>
                 ) : null}
@@ -200,7 +177,10 @@ export const ServicePage = ({ routeKey }: ServicePageProps) => {
                         <li key={index}>
                           <a
                             href={`#${anchors[index]}`}
-                            aria-current={isCurrent ? 'true' : undefined}
+                            // `location`, not `page`: every row here points at
+                            // the page the reader is already on, and `page`
+                            // would announce all of them as the current page.
+                            aria-current={isCurrent ? 'location' : undefined}
                             // Colour never carries "you are here" alone — the
                             // current item changes weight and ink as well.
                             className={`flex gap-3 border-s-2 py-2 ps-3 text-label transition-colors duration-500 ${
@@ -227,7 +207,9 @@ export const ServicePage = ({ routeKey }: ServicePageProps) => {
                   that reorders or filters — the position is the identity. */}
               {page.sections.map((section, index) => {
                 const isLimit = index === layout.limitSection;
-                const figure = layout.figure?.section === index ? layout.figure.kind : null;
+                // Parallel array — see src/content/pageLayout.ts. A section past
+                // the end of it simply renders without a drawing.
+                const figure = layout.figures[index] ?? null;
 
                 return (
                   <Reveal key={index} className={index === 0 ? '' : 'mt-14 sm:mt-20'}>
@@ -298,53 +280,12 @@ export const ServicePage = ({ routeKey }: ServicePageProps) => {
           </div>
         </div>
 
-        {/* ---- The other three -------------------------------------------- */}
-        {siblings.length > 0 ? (
-          <div className="border-t border-rule bg-surface">
-            <div className="mx-auto max-w-page px-6 py-16 sm:px-10 sm:py-20 lg:px-16">
-              {/* On the page's grid like everything else, so this band starts
-                  on the same edge the sections above it do. */}
-              <div className={COLUMNS}>
-                <p aria-hidden="true" className="hidden lg:block" />
-
-                <div>
-                  <h2 className="text-h2 font-semibold text-ink">{fa.ui.otherPages}</h2>
-
-                  {/* The same anatomy as the header menu's rows — numeral,
-                      title, one line under it — because these are the same
-                      four pages. Two different presentations of one set is one
-                      set the reader has to learn twice. */}
-                  <ul className="mt-8 grid gap-px overflow-hidden rounded-card border border-rule bg-rule sm:grid-cols-2 lg:grid-cols-3">
-                    {siblings.map(({ route, callout }) => (
-                      <li key={route.key} className="bg-paper">
-                        <a
-                          href={route.path}
-                          className="group flex h-full gap-3 p-5 transition-colors duration-200 hover:bg-surface sm:p-6"
-                        >
-                          <span
-                            aria-hidden="true"
-                            className="mt-px text-label tabular-nums text-muted transition-colors duration-200 group-hover:text-accent-text"
-                          >
-                            {callout}
-                          </span>
-
-                          <span>
-                            <span className="block text-h3 font-semibold text-ink">
-                              {fa.pages[route.key].title}
-                            </span>
-                            <span className="mt-2 block text-label text-muted">
-                              {fa.pages[route.key].blurb}
-                            </span>
-                          </span>
-                        </a>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            </div>
-          </div>
-        ) : null}
+        {/* ---- The other three --------------------------------------------
+            Centred and off the page's grid, unlike everything above it. The
+            reasoning is in src/components/OtherPages.tsx; the short version is
+            that this band is the way out of the page rather than part of it,
+            and the home page carries the identical one. */}
+        <OtherPages currentKey={routeKey} />
 
         {/* ---- The one action --------------------------------------------
             The same choice src/sections/Contact.tsx makes, and it has to stay
