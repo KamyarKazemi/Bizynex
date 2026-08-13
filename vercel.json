@@ -5,20 +5,6 @@
   "framework": "vite",
   "cleanUrls": true,
   "trailingSlash": false,
-  "redirects": [
-    {
-      "source": "/(.*)",
-      "has": [{ "type": "host", "value": "www.bizynex.ir" }],
-      "destination": "https://bizynex.ir/$1",
-      "permanent": true
-    },
-    {
-      "source": "/(.*)",
-      "has": [{ "type": "host", "value": "bizynex.vercel.app" }],
-      "destination": "https://bizynex.ir/$1",
-      "permanent": true
-    }
-  ],
   "headers": [
     {
       "source": "/assets/(.*)",

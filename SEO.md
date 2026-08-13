@@ -62,18 +62,18 @@ slow one.
 
 Also set:
 
-- **One redirect**, `www.bizynex.ir` → the apex, 301. It is back because the
-  domain it names is now attached to the project; between 2026-08-09 and
-  2026-08-13 it was deliberately absent, because a rule naming a hostname
-  nobody serves is dead config that reads as working config. Set the apex as
-  the primary domain in the Vercel dashboard too, so the rule and the dashboard
-  agree.
+- **No `redirects` key, deliberately.** Domain redirection belongs to the
+  Vercel dashboard, which already sends every attached domain to whichever is
+  primary. Configuring it here as well means two systems doing one job with no
+  way to keep them in agreement, and on 2026-08-13 that shipped a live site
+  answering `ERR_TOO_MANY_REDIRECTS` — the dashboard sent the apex one way, a
+  rule in `vercel.json` sent it back. Attach the apex and `www` in the
+  dashboard, mark the apex primary, and leave this file out of it.
 
-  **The Vercel project alias redirects here too**, added once the domain
-  reported Valid Configuration. It was deliberately held back for a few hours
-  while `.ir` nameservers propagated: the alias was the only address serving,
-  and pointing it at a host that does not resolve takes the site off the
-  internet. Hold it back the same way if the origin ever moves again.
+  Nothing is lost: every page declares `https://bizynex.ir` as canonical,
+  `og:url`, both `hreflang`s and its JSON-LD `url`, and the sitemap agrees.
+  That is what a crawler consolidates on.
+
 - **Security headers** (`nosniff`, `Referrer-Policy`, `X-Frame-Options`,
   `Permissions-Policy`, HSTS). Not ranking factors, but HSTS removes an HTTP→HTTPS
   redirect hop on repeat visits, which is a real latency win.
